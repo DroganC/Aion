@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 
 import { configService } from '@/common/config/configService';
 import { ipcBridge } from '@/common';
+import { getBrandDisplayName } from '@/common/brand';
 import i18nConfig from '@/common/config/i18n-config.json';
 import {
   DEFAULT_LANGUAGE,
@@ -130,7 +131,12 @@ i18n
     lng: initialLanguage,
     fallbackLng: DEFAULT_LANGUAGE,
     debug: false,
-    interpolation: { escapeValue: false },
+    interpolation: {
+      escapeValue: false,
+      defaultVariables: {
+        productName: getBrandDisplayName(),
+      },
+    },
   })
   .catch((error: Error) => {
     console.error('Failed to initialize i18n:', error);

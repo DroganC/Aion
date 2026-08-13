@@ -1,0 +1,12 @@
+{
+  "id": "wework",
+  "displayName": "WeWork",
+  "productName": "WeWork",
+  "icons": {
+    "icns": "icons/app.icns",
+    "ico": "icons/app.ico",
+    "png": "icons/app.png",
+    "devPng": "icons/app_dev.png",
+    "login": "icons/login.png"
+  }
+}

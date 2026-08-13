@@ -105,7 +105,7 @@ files:
 extraResources:
   - from: public
     to: .
-  - from: resources/app.png
+  - from: resources/.brand/app.png
     to: app.png
   # aioncore binary (pre-compiled per platform/arch, ships its own bun runtime)
   - from: resources/bundled-aioncore
@@ -116,7 +116,7 @@ win:
   target:
     - nsis
     #    - msi
-  icon: resources/app.ico # Use the checked-in Windows icon resource for executable metadata/icon patching
+  icon: resources/.brand/app.ico # Synced from active brand (brands/<id>/icons or resources fallback)
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 
 nsis:
@@ -133,7 +133,7 @@ mac:
   target:
     - dmg
     - zip
-  icon: resources/app.icns
+  icon: resources/.brand/app.icns
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   category: public.app-category.productivity
   hardenedRuntime: true
@@ -166,7 +166,7 @@ afterSign: scripts/afterSign.js
 linux:
   target:
     - deb
-  icon: resources/app.png
+  icon: resources/.brand/app.png
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   category: Utility
   maintainer: aionui

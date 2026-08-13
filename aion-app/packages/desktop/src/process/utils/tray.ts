@@ -11,8 +11,10 @@ import {
   electronNativeImage as nativeImage,
   electronTray as Tray,
 } from '@/common/electronSafe';
+import * as fs from 'fs';
 import * as path from 'path';
 import { ipcBridge } from '@/common';
+import { getBrandDisplayName } from '@/common/brand';
 import i18n from '@process/services/i18n';
 
 let tray: TrayInstance | null = null;
@@ -84,7 +86,12 @@ export const toggleMainWindowFromTray = (): void => {
  */
 const getTrayIcon = (): Electron.NativeImage => {
   const resourcesPath = app.isPackaged ? process.resourcesPath : path.join(process.cwd(), 'resources');
-  const icon = nativeImage.createFromPath(path.join(resourcesPath, 'app.png'));
+  const brandIcon = app.isPackaged
+    ? path.join(resourcesPath, 'app.png')
+    : path.join(resourcesPath, '.brand', 'app.png');
+  const fallbackIcon = path.join(process.cwd(), 'resources', 'app.png');
+  const iconPath = fs.existsSync(brandIcon) ? brandIcon : fallbackIcon;
+  const icon = nativeImage.createFromPath(iconPath);
   if (process.platform === 'darwin') {
     return icon.resize({ width: 16, height: 16 });
   }
@@ -210,7 +217,7 @@ export const createOrUpdateTray = (): void => {
   try {
     const icon = getTrayIcon();
     tray = new Tray(icon);
-    tray.setToolTip('AionUi');
+    tray.setToolTip(getBrandDisplayName());
     void buildTrayContextMenu().then((menu) => tray?.setContextMenu(menu));
 
     // Double-click: always show/focus (Windows/Linux; macOS rarely fires this).

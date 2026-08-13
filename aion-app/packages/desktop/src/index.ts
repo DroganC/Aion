@@ -47,6 +47,7 @@ import {
   loadSavedWindowBounds,
   resolveInitialBounds,
 } from './process/utils/windowBounds';
+import { getBrandDisplayName } from './common/brand';
 import {
   clearPendingDeepLinkUrl,
   getPendingDeepLinkUrl,
@@ -444,8 +445,11 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
   if (!app.isPackaged) {
     try {
       // Windows: app.ico (no dev version), Linux: app_dev.png (with padding)
+      // Icons are synced from the active brand into resources/.brand/ at Vite startup.
       const iconFile = process.platform === 'win32' ? 'app.ico' : 'app_dev.png';
-      const iconPath = path.join(process.cwd(), 'resources', iconFile);
+      const brandIconPath = path.join(process.cwd(), 'resources', '.brand', iconFile);
+      const fallbackIconPath = path.join(process.cwd(), 'resources', iconFile);
+      const iconPath = fs.existsSync(brandIconPath) ? brandIconPath : fallbackIconPath;
       if (fs.existsSync(iconPath)) {
         devIcon = nativeImage.createFromPath(iconPath);
         if (devIcon.isEmpty()) devIcon = undefined;
@@ -463,6 +467,7 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
     minWidth: MIN_WINDOW_WIDTH,
     minHeight: MIN_WINDOW_HEIGHT,
     show: false, // Hide until CSS is loaded to prevent FOUC
+    title: getBrandDisplayName(),
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
     // Set icon for Windows/Linux in development mode

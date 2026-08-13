@@ -19,3 +19,8 @@ declare module '*?raw' {
 }
 
 declare module 'unocss';
+
+declare module '@brand/login-logo' {
+  const src: string;
+  export default src;
+}

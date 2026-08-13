@@ -34,7 +34,11 @@ const getNotificationIcon = (): string | undefined => {
     const resourcesPath = getPlatformServices().paths.isPackaged()
       ? process.resourcesPath
       : path.join(process.cwd(), 'resources');
-    const iconPath = path.join(resourcesPath, 'app.png');
+    const brandIcon = getPlatformServices().paths.isPackaged()
+      ? path.join(resourcesPath, 'app.png')
+      : path.join(resourcesPath, '.brand', 'app.png');
+    const fallbackIcon = path.join(process.cwd(), 'resources', 'app.png');
+    const iconPath = fs.existsSync(brandIcon) ? brandIcon : fallbackIcon;
     if (fs.existsSync(iconPath)) {
       return iconPath;
     }

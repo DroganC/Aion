@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ClientFactory, normalizeNewApiBaseUrl } from '@/common/api/ClientFactory';
+import { getBrandDisplayName } from '@/common/brand';
 import { OpenAIRotatingClient } from '@/common/api/OpenAIRotatingClient';
 import { GeminiRotatingClient } from '@/common/api/GeminiRotatingClient';
 import { AnthropicRotatingClient } from '@/common/api/AnthropicRotatingClient';
@@ -163,7 +164,7 @@ describe('ClientFactory', () => {
       const config = calls[0][1];
       expect(config.defaultHeaders).toEqual({
         'HTTP-Referer': 'https://aionui.com',
-        'X-Title': 'AionUi',
+        'X-Title': getBrandDisplayName(),
       });
     });
 

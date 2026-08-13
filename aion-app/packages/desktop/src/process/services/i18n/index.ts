@@ -13,6 +13,7 @@ import {
   ensureAndSwitch,
   type LocaleData,
 } from '@/common/config/i18n';
+import { getBrandDisplayName } from '@/common/brand';
 
 // Static imports – Vite bundles these into the main-process output so they
 // work correctly in both development and production (no fs.readFile needed).
@@ -65,7 +66,12 @@ export const i18nReady = (async (): Promise<void> => {
     },
     fallbackLng: DEFAULT_LANGUAGE,
     debug: false,
-    interpolation: { escapeValue: false },
+    interpolation: {
+      escapeValue: false,
+      defaultVariables: {
+        productName: getBrandDisplayName(),
+      },
+    },
   });
 
   const language = await ProcessConfig.get('language');

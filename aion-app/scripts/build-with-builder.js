@@ -14,6 +14,11 @@ const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { resolveAndSyncBrand } = require('../brands/resolve.cjs');
+
+const activeBrand = resolveAndSyncBrand();
+console.log(`Brand: ${activeBrand.id} (productName=${activeBrand.productName})`);
+console.log(`Brand icons synced → resources/.brand/ (png=${activeBrand.icons.png})`);
 
 // DMG retry logic for macOS: detects DMG creation failures by checking artifacts
 // (.app exists but .dmg missing) and retries only the DMG step using
@@ -848,7 +853,7 @@ try {
       const electronRunning = isProcessRunningWindows('electron.exe');
       if (aionRunning || electronRunning) {
         console.log('⚠️  Detected running AionUi/Electron process. Attempting to close...');
-        killWindowsProcesses(['AionUi.exe', 'electron.exe']);
+        killWindowsProcesses([`${activeBrand.productName}.exe`, 'AionUi.exe', 'electron.exe']);
         cleaned = tryRemoveDir(winUnpackedDir);
         if (!cleaned) {
           console.log('⚠️  Directory still locked. Please close any running AionUi/Electron processes and retry.');
@@ -863,11 +868,19 @@ try {
     cleanupWindowsPackOutput();
   }
 
-  const builderCommand = `bunx electron-builder --config packages/desktop/electron-builder.yml ${builderArgs} ${archFlag} ${nsisInclude} ${publishArg}`;
+  const brandBuilderOverrides =
+    `--config.productName=${JSON.stringify(activeBrand.productName)} ` +
+    `--config.executableName=${JSON.stringify(activeBrand.productName)} ` +
+    `--config.mac.icon=${JSON.stringify(path.join('resources', '.brand', 'app.icns'))} ` +
+    `--config.win.icon=${JSON.stringify(path.join('resources', '.brand', 'app.ico'))} ` +
+    `--config.linux.icon=${JSON.stringify(path.join('resources', '.brand', 'app.png'))} ` +
+    `--config.linux.desktop.entry.Name=${JSON.stringify(activeBrand.productName)} ` +
+    `--config.linux.desktop.entry.Icon=${JSON.stringify(activeBrand.productName)}`;
+  const builderCommand = `bunx electron-builder --config packages/desktop/electron-builder.yml ${brandBuilderOverrides} ${builderArgs} ${archFlag} ${nsisInclude} ${publishArg}`;
   try {
     buildWithDmgRetry(builderCommand, targetArch);
   } catch (error) {
-    const winExePath = path.join(outDir, 'win-unpacked', 'AionUi.exe');
+    const winExePath = path.join(outDir, 'win-unpacked', `${activeBrand.productName}.exe`);
     const firstError = formatExecError(error);
     const canRetryWithoutExecutableEdit =
       process.platform === 'win32' && isWindowsBuild && process.env.CI !== 'true' && fs.existsSync(winExePath);

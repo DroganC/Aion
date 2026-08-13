@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { getBrandDisplayName } from '@/common/brand';
 
 const streamHandlers: Array<(e: unknown) => void> = [];
 const showInvoke = vi.fn();
@@ -47,7 +48,7 @@ describe('useDesktopTurnNotification', () => {
     emitStream({ type: 'finish', conversation_id: 's1', turn_id: 't1' });
     expect(showInvoke).toHaveBeenCalledTimes(1);
     expect(showInvoke).toHaveBeenCalledWith({
-      title: 'AionUi',
+      title: getBrandDisplayName(),
       body: 'settings.browserNotification.bodyTurnCompleted',
       conversation_id: 's1',
     });

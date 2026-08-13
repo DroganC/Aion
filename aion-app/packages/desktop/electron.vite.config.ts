@@ -1,6 +1,7 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
+import { createRequire } from 'module';
 import { resolve } from 'path';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import UnoCSS from 'unocss/vite';
@@ -12,6 +13,22 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 // at "0.0.0" — never use it for user-visible version strings.
 const rootPackageJson = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf-8')) as {
   version: string;
+};
+
+const nodeRequire = createRequire(__filename);
+const { resolveAndSyncBrand } = nodeRequire('../../brands/resolve.cjs') as {
+  resolveAndSyncBrand: () => {
+    id: string;
+    displayName: string;
+    productName: string;
+    icons: { icns: string; ico: string; png: string; devPng: string; login: string };
+  };
+};
+const activeBrand = resolveAndSyncBrand();
+const brandDefines = {
+  __BRAND_ID__: JSON.stringify(activeBrand.id),
+  __BRAND_DISPLAY_NAME__: JSON.stringify(activeBrand.displayName),
+  __BRAND_PRODUCT_NAME__: JSON.stringify(activeBrand.productName),
 };
 
 // Build builtin MCP servers after main process bundle so they survive out/main/ cleanup.
@@ -156,6 +173,7 @@ export default defineConfig(({ mode }) => {
         // Discontinued-build fork flag (see discontinuedBuild.ts). Only AionUi's
         // final `-final` tag build sets IS_DISCONTINUED_BUILD=true in CI.
         'process.env.IS_DISCONTINUED_BUILD': JSON.stringify(process.env.IS_DISCONTINUED_BUILD === 'true'),
+        ...brandDefines,
       },
     },
 
@@ -211,6 +229,8 @@ export default defineConfig(({ mode }) => {
           '@renderer': resolve('packages/desktop/src/renderer'),
           '@process': resolve('packages/desktop/src/process'),
           '@worker': resolve('packages/desktop/src/process/worker'),
+          // Active brand login mark (brands/<id>/icons/login.png or fallback)
+          '@brand/login-logo': activeBrand.icons.login,
           // Force ESM version of streamdown
           streamdown: resolve('node_modules/streamdown/dist/index.js'),
         },
@@ -314,6 +334,7 @@ export default defineConfig(({ mode }) => {
         __APP_VERSION__: JSON.stringify(rootPackageJson.version),
         // Renderer-side discontinued-build flag; consumed via discontinuedBuild.ts.
         __IS_DISCONTINUED_BUILD__: JSON.stringify(process.env.IS_DISCONTINUED_BUILD === 'true'),
+        ...brandDefines,
         global: 'globalThis',
       },
       optimizeDeps: {

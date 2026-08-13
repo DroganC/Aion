@@ -1,5 +1,17 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import { createRequire } from 'module';
+
+const nodeRequire = createRequire(__filename);
+const { resolveAndSyncBrand } = nodeRequire('./brands/resolve.cjs') as {
+  resolveAndSyncBrand: () => {
+    id: string;
+    displayName: string;
+    productName: string;
+    icons: { icns: string; ico: string; png: string; devPng: string; login: string };
+  };
+};
+const activeBrand = resolveAndSyncBrand();
 
 const aliases = {
   '@/': path.resolve(__dirname, './packages/desktop/src') + '/',
@@ -9,11 +21,17 @@ const aliases = {
   '@mcp/models/': path.resolve(__dirname, './packages/desktop/src/common/models') + '/',
   '@mcp/types/': path.resolve(__dirname, './packages/desktop/src/common') + '/',
   '@mcp/': path.resolve(__dirname, './packages/desktop/src/common') + '/',
+  '@brand/login-logo': activeBrand.icons.login,
 };
 
 export default defineConfig({
   resolve: {
     alias: aliases,
+  },
+  define: {
+    __BRAND_ID__: JSON.stringify(activeBrand.id),
+    __BRAND_DISPLAY_NAME__: JSON.stringify(activeBrand.displayName),
+    __BRAND_PRODUCT_NAME__: JSON.stringify(activeBrand.productName),
   },
   test: {
     globals: true,

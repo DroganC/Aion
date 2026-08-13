@@ -17,6 +17,7 @@ import type {
   InstallerLastFailureMarker,
 } from '@/common/update/updateTypes';
 import { uuid } from '@/common/utils';
+import { getBrandDisplayName } from '@/common/brand';
 import { app } from 'electron';
 import log from 'electron-log';
 import * as fs from 'fs';
@@ -61,7 +62,7 @@ interface AutoUpdateCheckParams {
 }
 
 const DEFAULT_REPO = 'iOfficeAI/AionUi';
-const DEFAULT_USER_AGENT = 'AionUi';
+const DEFAULT_USER_AGENT = getBrandDisplayName();
 const ALLOWED_ASSET_EXTS = new Set(['.exe', '.msi', '.dmg', '.zip', '.deb', '.rpm']);
 const CDN_HOST = 'static.aionui.com';
 const CDN_BASE_URL = `https://${CDN_HOST}/releases`;
@@ -431,7 +432,7 @@ const sanitizeFileName = (name: string): string => {
   // Keep only base name and trim weird whitespace.
   const base = path.basename(name).trim();
   // Avoid empty names.
-  return base || `AionUi-update-${Date.now()}`;
+  return base || `${getBrandDisplayName()}-update-${Date.now()}`;
 };
 
 const ensureUniquePath = (target: string): string => {
