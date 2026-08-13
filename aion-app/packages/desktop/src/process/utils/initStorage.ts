@@ -340,13 +340,36 @@ const ensureAssistantDirs = async (): Promise<void> => {
   if (!existsSync(assistantsDir)) mkdirSync(assistantsDir);
 };
 
+/**
+ * Directory that contains built-in MCP entry scripts (`builtin-mcp-*.js`).
+ *
+ * Prefer `app.getAppPath()/out/main` over `require.main` / `__dirname`. In some
+ * Electron + electron-vite startup shapes `require.main.filename` resolves to the
+ * app root (the folder with package.json), which previously baked
+ * `<appRoot>/builtin-mcp-browser.js` into MCP transport args — a path that does
+ * not exist (scripts are emitted to `out/main/`). That made aionui-browser fail
+ * MCP initialize with a generic handshake/502 error.
+ *
+ * Packaged builds still cannot load these scripts from inside `app.asar` (external
+ * `node` has no ASAR FS), so redirect to `app.asar.unpacked`.
+ */
 const getBuiltinMcpBaseDir = (): string => {
+  const paths = getPlatformServices().paths;
+  const appPath = paths.getAppPath();
+
+  if (appPath) {
+    const mainDir = path.join(appPath, 'out', 'main');
+    if (paths.isPackaged()) {
+      return mainDir.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`).replace(/app\.asar$/, 'app.asar.unpacked');
+    }
+    return mainDir;
+  }
+
+  // Fallback for non-Electron hosts / tests.
   const mainModuleDir =
     typeof require !== 'undefined' && require.main?.filename ? path.dirname(require.main.filename) : __dirname;
   const baseDir = path.basename(mainModuleDir) === 'chunks' ? path.dirname(mainModuleDir) : mainModuleDir;
-  // In packaged mode the main bundle lives inside app.asar, but external node
-  // processes cannot read files from ASAR archives. Redirect to the unpacked copy.
-  if (getPlatformServices().paths.isPackaged()) {
+  if (paths.isPackaged()) {
     return baseDir.replace('app.asar', 'app.asar.unpacked');
   }
   return baseDir;
@@ -354,12 +377,10 @@ const getBuiltinMcpBaseDir = (): string => {
 
 /**
  * Resolve the path to a built-in MCP server entry script.
- * In development the file lives next to the main process bundle (out/main/);
- * in production it's inside the packaged app.
+ * In development the file lives at `<appRoot>/out/main/`;
+ * in production it's under the packaged app's unpacked `out/main/`.
  */
 const getBuiltinMcpScriptPath = (scriptName: string): string => {
-  // initStorage may itself be code-split into out/main/chunks/.
-  // Built-in MCP entry files are emitted next to the main entry in out/main/.
   return path.resolve(getBuiltinMcpBaseDir(), `${scriptName}.js`);
 };
 
