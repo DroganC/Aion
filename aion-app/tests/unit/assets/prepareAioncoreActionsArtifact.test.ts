@@ -180,11 +180,12 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     }
   });
 
-  posixFakeToolchainIt('prepares local binary fallback without managed-resources', () => {
+  posixFakeToolchainIt('prefers AIONUI_BACKEND_LOCAL_BINARY over GitHub download', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-local-binary-gate-'));
     const localBinary = join(tmp, 'aioncore');
     writeExecutable(localBinary, '#!/usr/bin/env bash\nexit 0\n');
-    const fakeBin = createFakeToolchain(tmp, { curlFails: true });
+    // curl succeeds — local binary must still win so build.sh does not hit GitHub.
+    const fakeBin = createFakeToolchain(tmp, { curlFails: false });
     const previousPath = process.env.PATH;
     process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
     process.env.AIONUI_BACKEND_LOCAL_BINARY = localBinary;

@@ -2,10 +2,10 @@
  * Prepare aioncore binary for packaging.
  *
  * Resolution order:
- *  1. GitHub Actions artifact download when AIONUI_BACKEND_RUN_ID is set
- *  2. GitHub release download (requires version or defaults to "latest")
- *  3. Complete local bundle from AIONUI_BACKEND_LOCAL_BUNDLE_DIR
- *  4. Local binary fallback from AIONUI_BACKEND_LOCAL_BINARY
+ *  1. Complete local bundle from AIONUI_BACKEND_LOCAL_BUNDLE_DIR
+ *  2. Explicit local binary from AIONUI_BACKEND_LOCAL_BINARY
+ *  3. GitHub Actions artifact download when AIONUI_BACKEND_RUN_ID is set
+ *  4. GitHub release download (requires version or defaults to "latest")
  *
  * Output: {projectRoot}/resources/bundled-aioncore/{platform}-{arch}/
  *   - aioncore[.exe]
@@ -488,12 +488,37 @@ function prepareAioncore(options) {
     console.warn(`  Local aioncore bundle is incomplete or missing: ${resolvedLocalBundleDir}`);
   }
 
+  // Prefer an explicitly supplied local binary over any network download.
+  // build.sh / debug.sh set this so packaging uses the just-built aioncore.
+  const localBinary = (process.env.AIONUI_BACKEND_LOCAL_BINARY || '').trim();
+  if (localBinary) {
+    const resolvedLocalBinary = path.resolve(localBinary);
+    if (fs.existsSync(resolvedLocalBinary) && fs.statSync(resolvedLocalBinary).isFile()) {
+      copyFileSafe(resolvedLocalBinary, targetBinaryPath);
+      ensureExecutableMode(targetBinaryPath);
+      const manifest = {
+        platform,
+        arch,
+        version: tag || `actions-run-${actionsRunId}` || 'local-binary',
+        generatedAt: new Date().toISOString(),
+        sourceType: 'local-binary',
+        source: { path: resolvedLocalBinary },
+        files: [binaryName],
+      };
+      writeJson(path.join(targetDir, 'manifest.json'), manifest);
+      verifyPreparedAioncoreBundle(projectRoot, platform, arch);
+      console.log(`  Using local aioncore binary: ${resolvedLocalBinary}`);
+      return { prepared: true, dir: targetDir, sourceType: 'local-binary' };
+    }
+    console.warn(`  Local aioncore binary not found: ${resolvedLocalBinary}`);
+  }
+
   let sourcePath = null;
   let sourceType = 'none';
   let sourceDetail = {};
   let tempDir = null;
 
-  // 1. Download from GitHub Actions artifacts when manual build run id is provided.
+  // Download from GitHub Actions artifacts when manual build run id is provided.
   if (actionsRunId) {
     const result = downloadAndExtractActionsArtifact(platform, arch, actionsRunId);
     sourcePath = result.binaryPath;
@@ -507,7 +532,7 @@ function prepareAioncore(options) {
     console.log(`  Downloaded from GitHub Actions artifact`);
   }
 
-  // 2. Download from GitHub releases.
+  // Download from GitHub releases.
   if (!sourcePath && tag) {
     try {
       const result = downloadAndExtract(platform, arch, tag);
@@ -518,22 +543,6 @@ function prepareAioncore(options) {
       console.log(`  Downloaded from GitHub releases`);
     } catch (error) {
       console.warn(`  Download failed: ${error.message}`);
-    }
-  }
-
-  // 3. Use an explicitly supplied local cache when network download is unavailable.
-  if (!sourcePath) {
-    const localBinary = (process.env.AIONUI_BACKEND_LOCAL_BINARY || '').trim();
-    if (localBinary) {
-      const resolvedLocalBinary = path.resolve(localBinary);
-      if (fs.existsSync(resolvedLocalBinary) && fs.statSync(resolvedLocalBinary).isFile()) {
-        sourcePath = resolvedLocalBinary;
-        sourceType = 'local-binary';
-        sourceDetail = { path: resolvedLocalBinary };
-        console.log(`  Using local aioncore binary: ${resolvedLocalBinary}`);
-      } else {
-        console.warn(`  Local aioncore binary not found: ${resolvedLocalBinary}`);
-      }
     }
   }
 
