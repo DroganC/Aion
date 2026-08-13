@@ -5,6 +5,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { PreviewTab } from './PreviewTabs';
 
@@ -93,11 +94,31 @@ interface PreviewContextMenuProps {
 }
 
 /**
+ * Stable mount node outside the preview panel's overflow:hidden wrappers.
+ * Avoids portal-to-document.body conflicts with test cleanups.
+ */
+function getMenuMountNode(): HTMLElement {
+  const id = 'aion-preview-tab-context-menu-root';
+  let node = document.getElementById(id);
+  if (!node) {
+    node = document.createElement('div');
+    node.id = id;
+    document.body.appendChild(node);
+  }
+  return node;
+}
+
+/**
  * 预览面板右键菜单组件
  * Preview panel context menu component
  *
  * 提供关闭左侧/右侧/其他/所有 Tab 的功能
  * Provides functions to close left/right/other/all tabs
+ *
+ * Portaled out of the preview panel so ChatLayout/Layout overflow:hidden
+ * wrappers cannot clip it. Outside-click listening is deferred and ignores
+ * right-button events so the opening Electron/macOS gesture does not dismiss
+ * the menu immediately.
  */
 const PreviewContextMenu: React.FC<PreviewContextMenuProps> = ({
   contextMenu,
@@ -114,8 +135,12 @@ const PreviewContextMenu: React.FC<PreviewContextMenuProps> = ({
 
   // 点击外部关闭上下文菜单 / Close context menu when clicking outside
   useEffect(() => {
+    if (!contextMenu.show) return;
+
     const handleClickOutside = (e: MouseEvent) => {
-      if (!contextMenu.show) return;
+      // Opening right-click must not dismiss the menu. Electron/macOS can deliver
+      // mousedown after contextmenu for the same gesture.
+      if (e.button === 2) return;
       // 如果点击的是菜单内部，不关闭 / Don't close if clicking inside menu
       if (contextMenuRef.current && contextMenuRef.current.contains(e.target as Node)) {
         return;
@@ -123,12 +148,17 @@ const PreviewContextMenu: React.FC<PreviewContextMenuProps> = ({
       onClose();
     };
 
+    // 延迟绑定，避免打开菜单的同一次右键手势立刻触发关闭
+    // Defer so the opening gesture cannot hit this listener.
     // 使用 mousedown 而不是 click,避免与右键菜单的 onClick 冲突
     // Use mousedown instead of click to avoid conflicts with context menu onClick
-    document.addEventListener('mousedown', handleClickOutside, { passive: true });
+    const timer = window.setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside, { capture: true, passive: true });
+    }, 0);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      window.clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside, true);
     };
   }, [contextMenu.show, onClose]);
 
@@ -141,9 +171,10 @@ const PreviewContextMenu: React.FC<PreviewContextMenuProps> = ({
   const hasRightTabs = currentIndex >= 0 && currentIndex < tabs.length - 1;
   const hasOtherTabs = tabs.length > 1;
 
-  return (
+  const menu = (
     <div
       ref={contextMenuRef}
+      data-testid='preview-tab-context-menu'
       className='fixed shadow-lg rd-8px py-4px z-9999'
       style={{
         left: `${contextMenu.x}px`,
@@ -189,6 +220,8 @@ const PreviewContextMenu: React.FC<PreviewContextMenuProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(menu, getMenuMountNode());
 };
 
 export default PreviewContextMenu;

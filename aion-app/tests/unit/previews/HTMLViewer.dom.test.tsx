@@ -186,4 +186,54 @@ describe('HTMLRenderer', () => {
       })
     );
   });
+
+  it('rebinds console-message after webview remounts when src changes', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: electronAPI,
+    });
+
+    const onElementSelected = vi.fn();
+    const dirtyPropsA = {
+      content: '<h1>A</h1>',
+      isDirty: true,
+      onElementSelected,
+    } as React.ComponentProps<typeof HTMLRenderer> & { isDirty: boolean };
+
+    const { container, rerender } = render(<HTMLRenderer {...dirtyPropsA} />);
+    let webview = container.querySelector('webview');
+    expect(webview).toBeTruthy();
+
+    webview!.dispatchEvent(
+      createConsoleMessageEvent({
+        level: 0,
+        line: 1,
+        message: '__INSPECT_ELEMENT__{"html":"<h1>A</h1>","tag":"h1"}',
+        sourceId: 'test',
+      })
+    );
+    expect(onElementSelected).toHaveBeenCalledTimes(1);
+
+    const dirtyPropsB = {
+      content: '<h1>B</h1>',
+      isDirty: true,
+      onElementSelected,
+    } as React.ComponentProps<typeof HTMLRenderer> & { isDirty: boolean };
+    rerender(<HTMLRenderer {...dirtyPropsB} />);
+
+    await waitFor(() => {
+      webview = container.querySelector('webview');
+      expect(webview?.getAttribute('src')).toContain('B');
+    });
+
+    webview!.dispatchEvent(
+      createConsoleMessageEvent({
+        level: 0,
+        line: 1,
+        message: '__INSPECT_ELEMENT__{"html":"<h1>B</h1>","tag":"h1"}',
+        sourceId: 'test',
+      })
+    );
+    expect(onElementSelected).toHaveBeenCalledTimes(2);
+  });
 });

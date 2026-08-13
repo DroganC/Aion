@@ -462,6 +462,8 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
   }, [inspectScript, inspectMode]);
 
   // 注入检查模式脚本 / Inject inspect mode script
+  // Depend on webviewSrc: when inspect stays ON across refresh, remount must
+  // re-attach did-finish-load so the inspect script is injected into the new page.
   useEffect(() => {
     const webview = webviewRef.current;
     if (!webview) return;
@@ -481,10 +483,11 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
     return () => {
       webview.removeEventListener('did-finish-load', handleLoad);
     };
-  }, [executeScript]);
+  }, [executeScript, webviewSrc]);
 
   // 监听 webview 控制台消息，捕获检查元素事件和滚动事件
   // Listen for webview console messages to capture inspect element events and scroll events
+  // Depend on webviewSrc: key={webviewSrc} remounts the node, so listeners must rebind.
   useEffect(() => {
     const webview = webviewRef.current;
     if (!webview) return;
@@ -551,7 +554,7 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
     return () => {
       webview.removeEventListener('console-message', handleConsoleMessage);
     };
-  }, [onElementSelected, onScroll]);
+  }, [onElementSelected, onScroll, webviewSrc]);
 
   // 注入滚动监听脚本 / Inject scroll listener script
   const scrollSyncScript = useMemo(
@@ -589,6 +592,7 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
   );
 
   // 注入滚动同步脚本 / Inject scroll sync script
+  // Depend on webviewSrc so remounted webviews get the inject listener again.
   useEffect(() => {
     const webview = webviewRef.current;
     if (!webview || !onScroll) return;
@@ -606,7 +610,7 @@ const HTMLRenderer: React.FC<HTMLRendererProps> = ({
     return () => {
       webview.removeEventListener('did-finish-load', injectScrollSync);
     };
-  }, [scrollSyncScript, onScroll]);
+  }, [scrollSyncScript, onScroll, webviewSrc]);
 
   // 监听外部滚动同步请求 / Listen for external scroll sync requests
   const handleTargetScroll = useCallback((targetPercent: number) => {
