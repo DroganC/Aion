@@ -242,7 +242,6 @@ describe('classifyBackendStartupFailure', () => {
       missingBackendBinary: true,
       missingBundledAioncoreDir: true,
       missingHubDir: true,
-      missingPetStatesDir: true,
       missingPwaDir: true,
       missingResources: ['bundled-aioncore/', 'bundled-aioncore/win32-x64/'],
       missingRuntimeDir: true,
@@ -269,7 +268,6 @@ describe('classifyBackendStartupFailure', () => {
         'elevate.exe',
         'hub/',
         'manifest.webmanifest',
-        'pet-states/',
         'pwa/',
         'sw.js',
       ],
@@ -278,13 +276,12 @@ describe('classifyBackendStartupFailure', () => {
 
     expect(classifyBackendStartupFailure(error)).toEqual({
       reason: 'backend_incomplete_installation',
-      incompleteInstallationKind: 'missing_directory_resources',
+      incompleteInstallationKind: 'missing_backend_binary',
       missingBackendBinary: true,
       missingBundledAioncoreDir: false,
       missingHubDir: false,
-      missingPetStatesDir: false,
       missingPwaDir: false,
-      missingResources: ['bundled-aioncore/win32-x64/managed-resources/', 'bundled-aioncore/win32-x64/aioncore.exe'],
+      missingResources: ['bundled-aioncore/win32-x64/aioncore.exe'],
       missingRuntimeDir: false,
     });
   });

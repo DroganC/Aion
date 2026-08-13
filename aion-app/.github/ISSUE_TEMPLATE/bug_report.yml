@@ -21,7 +21,7 @@ body:
         - WebUI & Remote Access
         - Scheduled Tasks
         - Team Collaboration
-        - Interface, Display & Desktop Pet
+        - Interface & Display
         - System Settings
         - Other
     validations:

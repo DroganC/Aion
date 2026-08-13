@@ -408,11 +408,11 @@ mod tests {
     async fn update_and_get_number() {
         let svc = setup().await;
         let mut req = UpdateClientPreferencesRequest::new();
-        req.insert("pet.size".into(), json!(360));
+        req.insert("ui.zoomFactor".into(), json!(360));
         svc.update_preferences(TEST_USER_ID, req).await.unwrap();
 
         let prefs = svc.get_preferences(TEST_USER_ID, None).await.unwrap();
-        assert_eq!(prefs["pet.size"], json!(360));
+        assert_eq!(prefs["ui.zoomFactor"], json!(360));
     }
 
     #[tokio::test]

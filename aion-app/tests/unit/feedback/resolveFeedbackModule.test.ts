@@ -29,7 +29,6 @@ describe('resolveFeedbackModule', () => {
     ['/settings/skills/import-history', 'skills-plugin'],
     ['/settings/tools', 'mcp-tools'],
     ['/settings/appearance', 'display-desktop'],
-    ['/settings/pet', 'display-desktop'],
     ['/settings/webui', 'webui-remote'],
     ['/settings/ext/telegram', 'channel'],
     ['/settings/system', 'system-settings'],

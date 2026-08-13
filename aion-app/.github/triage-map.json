@@ -13,7 +13,7 @@
     { "module": "WebUI & Remote Access", "label": "area/webui", "owner": "kaizhou-lab" },
     { "module": "Scheduled Tasks", "label": "area/cron", "owner": "kaizhou-lab" },
     { "module": "Team Collaboration", "label": "area/team", "owner": "piorpua" },
-    { "module": "Interface, Display & Desktop Pet", "label": "area/display", "owner": "IceyLiu" },
+    { "module": "Interface & Display", "label": "area/display", "owner": "IceyLiu" },
     { "module": "System Settings", "label": "area/settings", "owner": "IceyLiu" },
     { "module": "Other", "label": "area/other", "owner": "IceyLiu" }
   ],
