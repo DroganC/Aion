@@ -23,6 +23,7 @@ import { initializeProcess } from './process';
 import { startBackendOrExit } from './process/startup/backendStartup';
 import { assertStartupArchitectureCompatible } from './process/startup/architectureCompatibility';
 import { classifyBackendStartupFailure } from './process/startup/backendStartupFailure';
+import { checkSystemNodeRuntime } from './process/startup/nodeRuntimePreflight';
 import { installQuitCleanup } from './process/startup/quitCleanup';
 import { shouldRegisterBackendStartup } from './process/startup/singleInstanceGating';
 import { ProcessConfig } from './process/utils/initStorage';
@@ -757,6 +758,21 @@ const handleAppReady = async (): Promise<void> => {
     applyDebugBackendStartupFailure(debugBackendStartupFailure);
     mark(`debugBackendStartupFailure:${debugBackendStartupFailure.reason}`);
   } else {
+    // System Node is required before aioncore starts (no bundled Node runtime).
+    const nodePreflight = checkSystemNodeRuntime();
+    if (!nodePreflight.ok) {
+      console.error('[AionUi] System Node.js preflight failed:', nodePreflight.message);
+      markBackendStartupFailed(new Error(nodePreflight.message));
+      await captureBackendStartupFailure(new Error(nodePreflight.message));
+      if (isWebUIMode || isResetPasswordMode) {
+        app.exit(1);
+        return;
+      }
+      app.exit(1);
+      return;
+    }
+    mark(`systemNode:${nodePreflight.version} (${nodePreflight.nodePath})`);
+
     // Start aioncore only after initializeProcess(). initStorage may open
     // the legacy Electron SQLite catalog for a one-shot v26 migration and must
     // close it before the backend touches the same file.

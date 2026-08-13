@@ -335,11 +335,7 @@ function verifyBundledAioncoreResources({ resourcesDir, electronPlatformName, ta
 
   requireRelativePath(baseDir, runtimeKey, [backendBinaryName(electronPlatformName)], checked, missing, failures);
   verifyBundleManifest(baseDir, runtimeKey, electronPlatformName, targetArch, checked, missing, failures);
-  requireRelativeDirectory(baseDir, runtimeKey, ['managed-resources'], checked, missing, failures);
-  verifyManagedResourcesContract(baseDir, runtimeKey, checked, missing, failures);
-  if (failures.length > 0 && missing.length === 0) {
-    missing.push(`${contractBundledPath(runtimeKey, 'manifest.json')}<contract_failure>`);
-  }
+  // managed-resources / bundled Node were removed — runtime uses system Node.js.
 
   return { runtimeKey, checked, missing, failures };
 }

@@ -134,7 +134,7 @@ describe('buildSpawnArgs', () => {
       '--app-version',
       '9.9.9',
       '--managed-resources-mode',
-      'bundled',
+      'download',
       '--log-dir',
       '/log/dir',
       '--local',
@@ -175,7 +175,7 @@ describe('buildSpawnArgs', () => {
     }
   });
 
-  it('passes bundled managed resources mode when packaged', () => {
+  it('passes download managed resources mode when packaged (system Node; no bundle)', () => {
     const prev = process.env.AIONUI_DUMP_PROMPTS;
     process.env.AIONUI_DUMP_PROMPTS = '1';
     try {
@@ -188,7 +188,7 @@ describe('buildSpawnArgs', () => {
       });
 
       expect(args).toContain('--managed-resources-mode');
-      expect(args).toContain('bundled');
+      expect(args).toContain('download');
       expect(args).not.toContain('--dump-prompts');
     } finally {
       if (prev === undefined) delete process.env.AIONUI_DUMP_PROMPTS;
@@ -348,7 +348,7 @@ describe('BackendLifecycleManager.start (success path)', () => {
       '--app-version',
       '1.2.3',
       '--managed-resources-mode',
-      'bundled',
+      'download',
       '--log-dir',
       '/log/dir',
       '--work-dir',
@@ -402,7 +402,7 @@ describe('BackendLifecycleManager.start (success path)', () => {
         '--app-version',
         '1.2.3',
         '--managed-resources-mode',
-        'bundled',
+        'download',
         '--log-dir',
         '/log/dir',
         '--work-dir',

@@ -43,27 +43,27 @@ just preflight          # 检查 Node / bun / Python / native modules
 just build              # 当前平台安装包；产物在 aion-app/out/
 ```
 
-`just build` 会调用 `bun run build` → `node scripts/build-with-builder.js`。该脚本在 electron-builder 之前执行 `prepareAioncore`，按 pin 从 `iOfficeAI/AionCore` 的 GitHub Release 拉二进制，再让该二进制生成 `managed-resources`。
+`just build` / `bun run build` → `node scripts/build-with-builder.js`。该脚本在 electron-builder 之前执行 `prepareAioncore`，按 pin 从 `iOfficeAI/AionCore` 的 GitHub Release 拉 **aioncore 二进制**（不再生成 / 打包 `managed-resources` Node）。运行时使用本机系统 Node.js（major ≥ 24）。
 
 ### 1.2 联调路径：用本地刚编好的 AionCore
 
-先编 core，再告诉 app 用这份二进制（以及它生成的 managed-resources 目录）：
+先编 core，再告诉 app 用这份二进制：
 
 ```bash
 cd aion-core
 just build              # target/release/aioncore
 
 cd ../aion-app
-# 方式 A：整包目录（二进制 + managed-resources）
-export AIONUI_BACKEND_LOCAL_BUNDLE_DIR=/abs/path/to/complete-bundle
-# 方式 B：仅二进制（脚本会再跑 aioncore prepare-managed-resources）
+# 方式 A：本地目录（至少包含 aioncore 二进制）
+export AIONUI_BACKEND_LOCAL_BUNDLE_DIR=/abs/path/to/bundle-dir
+# 方式 B：仅二进制
 export AIONUI_BACKEND_LOCAL_BINARY=/abs/path/to/aioncore
 
 bun install
-just build
+bun run build-mac:arm64   # 或对应平台脚本
 ```
 
-`AIONUI_BACKEND_LOCAL_BUNDLE_DIR` 必须同时包含 `aioncore[.exe]` 和 `managed-resources/`。
+> **系统 Node**：桌面启动前会检查本机 `node` major ≥ 24；aioncore 也只使用系统 Node，不再下载或打包 Node 运行时。
 
 ### 1.3 打包期内部步骤（aion-app）
 
@@ -72,11 +72,11 @@ just build
 ```
 1. electron-vite build          # main + preload + renderer → out/
 2. scripts/build-mcp-servers.js # 内置 MCP 打成独立 CJS，供外部 node 运行
-3. prepareAioncore              # 下载/拷贝 aioncore，生成 managed-resources
+3. prepareAioncore              # 下载/拷贝 aioncore 二进制（不再 prepare-managed-resources）
 4. prepareHubResources.js       # Hub index.json + 扩展 zip（离线回退）
 5. electron-builder             # 按 electron-builder.yml 打安装包
      ├─ extraResources: bundled-aioncore / hub / public
-     ├─ afterPack.js            # 校验 bundled 资源；跨架构时重建 native module
+     ├─ afterPack.js            # 校验 bundled aioncore；跨架构时重建 native module
      └─ afterSign.js            # 仅 macOS：codesign + notarize
 ```
 
@@ -371,7 +371,7 @@ OfficeCLI **不**由 aion-app / aion-core 在打包期嵌入。AionCore 的 `aio
 | `AIONUI_BACKEND_VERSION` | prepareAioncore | 覆盖 `package.json#aioncoreVersion` |
 | `AIONUI_BACKEND_RUN_ID` | prepareAioncore | 改用 AionCore Manual Build artifact |
 | `AIONUI_BACKEND_ARCH` | prepareAioncore | 目标 arch；默认 `npm_config_target_arch` 或 `process.arch` |
-| `AIONUI_BACKEND_LOCAL_BUNDLE_DIR` | prepareAioncore | 本地完整 bundle 目录 |
+| `AIONUI_BACKEND_LOCAL_BUNDLE_DIR` | prepareAioncore | 本地目录（至少含 `aioncore` 二进制；不再要求 managed-resources） |
 | `AIONUI_BACKEND_LOCAL_BINARY` | prepareAioncore | 本地 `aioncore` 路径 |
 | `GH_TOKEN` / `GITHUB_TOKEN` | prepareAioncore、CI | GitHub API / 下载 |
 | `NODE_OPTIONS` | Vite / electron-builder | 建议 `--max-old-space-size=8192` |

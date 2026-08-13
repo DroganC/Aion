@@ -1,6 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use super::types::{NodeRuntimeError, NodeTool, ResolvedCommand, ResolvedNodeRuntime};
+use semver::Version;
+
+use crate::resolve_command_path;
+
+use super::types::{NodeRuntimeError, NodeRuntimeSupport, NodeTool, ResolvedCommand, ResolvedNodeRuntime, ResolvedNodeSource};
+
+/// Minimum supported system Node.js major version.
+pub const MIN_SYSTEM_NODE_MAJOR: u64 = 24;
 
 pub fn derive_runtime_root(node: &Path, windows: bool) -> Option<PathBuf> {
     if windows {
@@ -40,6 +47,70 @@ pub fn tool_command(tool: NodeTool, runtime: &ResolvedNodeRuntime) -> ResolvedCo
     }
 }
 
+pub fn probe_support() -> NodeRuntimeSupport {
+    match resolve_command_path("node") {
+        Some(path) => NodeRuntimeSupport {
+            supported: true,
+            detail: format!("system node available ({})", path.display()),
+        },
+        None => NodeRuntimeSupport {
+            supported: false,
+            detail: format!(
+                "node not found in PATH; install Node.js major version >= {MIN_SYSTEM_NODE_MAJOR}"
+            ),
+        },
+    }
+}
+
+/// Resolve `node` / `npm` / `npx` from PATH.
+///
+/// Version is left as `0.0.0` — callers must run `validate_runtime` with
+/// [`MIN_SYSTEM_NODE_MAJOR`] before using the runtime.
+pub fn resolve_system_runtime_paths() -> Result<ResolvedNodeRuntime, NodeRuntimeError> {
+    let node_path = resolve_command_path("node").ok_or_else(|| {
+        NodeRuntimeError::system_invalid(format!(
+            "node not found in PATH; install Node.js major version >= {MIN_SYSTEM_NODE_MAJOR}"
+        ))
+    })?;
+    let npm_path = resolve_command_path("npm").ok_or_else(|| {
+        NodeRuntimeError::system_invalid(format!(
+            "npm not found in PATH; install a complete Node.js {MIN_SYSTEM_NODE_MAJOR}+ distribution"
+        ))
+    })?;
+    let npx_path = resolve_command_path("npx").ok_or_else(|| {
+        NodeRuntimeError::system_invalid(format!(
+            "npx not found in PATH; install a complete Node.js {MIN_SYSTEM_NODE_MAJOR}+ distribution"
+        ))
+    })?;
+
+    let root = derive_runtime_root(&node_path, cfg!(windows))
+        .or_else(|| node_path.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| PathBuf::from("."));
+
+    // Enforce same-root only when the Node tree matches the classic layout.
+    // Version managers that only put shims on PATH still work via PATH lookup.
+    if derive_runtime_root(&node_path, cfg!(windows)).is_some() {
+        validate_same_root(&node_path, &npm_path, &npx_path)?;
+    }
+
+    Ok(ResolvedNodeRuntime {
+        source: ResolvedNodeSource::System,
+        root,
+        version: Version::new(0, 0, 0),
+        node_path,
+        npm_path,
+        npm_args_prefix: vec![],
+        npx_path,
+        npx_args_prefix: vec![],
+        env: vec![],
+    })
+}
+
+/// Best-effort probe for doctor: PATH node without running `--version`.
+pub fn probe_preferred_system_runtime() -> Option<ResolvedNodeRuntime> {
+    resolve_system_runtime_paths().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -71,5 +142,10 @@ mod tests {
         .unwrap_err();
 
         assert!(err.to_string().contains("same runtime root"));
+    }
+
+    #[test]
+    fn min_major_is_twenty_four() {
+        assert_eq!(MIN_SYSTEM_NODE_MAJOR, 24);
     }
 }

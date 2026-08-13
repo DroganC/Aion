@@ -122,7 +122,7 @@ fn data() -> Value {
             },
             {
                 "name": "prepare-managed-resources",
-                "description": "Packaging helper for managed runtime resources."
+                "description": "Removed. aioncore uses the system Node.js runtime (major >= 24)."
             }
         ]
     })

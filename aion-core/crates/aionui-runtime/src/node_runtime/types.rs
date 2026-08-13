@@ -13,7 +13,11 @@ pub enum NodeTool {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolvedNodeSource {
+    /// System PATH `node` / `npm` / `npx` (the only supported runtime source).
+    System,
+    /// Legacy: Node copied from a packaged managed-resources bundle.
     Bundled,
+    /// Legacy: Node downloaded into the data-dir runtime cache.
     Managed,
 }
 

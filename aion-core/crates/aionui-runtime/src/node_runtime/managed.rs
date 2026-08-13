@@ -72,6 +72,7 @@ enum ManagedNodeArchiveLayout {
     Unix,
 }
 
+#[allow(dead_code)] // superseded by system::probe_support; kept for managed-module tests
 pub fn probe_support() -> NodeRuntimeSupport {
     match platform_spec() {
         Ok(spec) => NodeRuntimeSupport {
@@ -85,6 +86,7 @@ pub fn probe_support() -> NodeRuntimeSupport {
     }
 }
 
+#[allow(dead_code)] // legacy bundled-path probe; retained for managed.rs unit tests / future tooling
 pub(crate) fn probe_preferred_local_runtime() -> Option<ResolvedNodeRuntime> {
     let spec = platform_spec().ok()?;
     let source = managed_resources::node_sources(&spec.directory_name())
@@ -361,6 +363,7 @@ fn resolve_managed_entrypoint(
     )))
 }
 
+#[allow(dead_code)] // used by managed unit tests / legacy activation paths
 fn probe_runtime_root(root: &Path, source: ResolvedNodeSource) -> Result<ResolvedNodeRuntime, NodeRuntimeError> {
     if !root.is_dir() {
         return Err(NodeRuntimeError::managed_invalid(format!(
@@ -493,6 +496,7 @@ async fn activate_local_runtime_source(
 
 fn source_label(source: ResolvedNodeSource) -> &'static str {
     match source {
+        ResolvedNodeSource::System => "system",
         ResolvedNodeSource::Bundled => "bundled",
         ResolvedNodeSource::Managed => "managed",
     }

@@ -206,7 +206,12 @@ export function buildSpawnArgs(config: SpawnConfig): string[] {
     '--app-version',
     config.appVersion,
   ];
-  if (config.isPackaged) args.push('--managed-resources-mode', 'bundled');
+  if (config.isPackaged) {
+    // Packaged builds used to force bundled managed-resources Node. Runtime now
+    // always uses the host system Node.js (major >= 24); keep download mode so
+    // aioncore does not look for a missing managed-resources tree.
+    args.push('--managed-resources-mode', 'download');
+  }
   if (!config.isPackaged && process.env.AIONUI_DUMP_PROMPTS === '1') args.push('--dump-prompts');
   if (config.logDir) args.push('--log-dir', config.logDir);
   if (config.workDir) args.push('--work-dir', config.workDir);

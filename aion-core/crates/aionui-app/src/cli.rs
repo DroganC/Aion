@@ -606,8 +606,7 @@ pub(crate) enum ConfigConversationCommand {
 
 #[derive(Args, Debug, Clone)]
 pub(crate) struct PrepareManagedResourcesArgs {
-    /// Bundle output root. Aioncore writes the managed resources under
-    /// `<bundle-out>/{node,acp}/...` for packaging.
+    /// Bundle output root (ignored — subcommand removed).
     #[arg(long)]
     pub bundle_out: PathBuf,
 }

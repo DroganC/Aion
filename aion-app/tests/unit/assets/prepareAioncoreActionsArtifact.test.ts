@@ -99,6 +99,7 @@ chmod +x "$out/aioncore"
 afterEach(() => {
   delete process.env.AIONUI_BACKEND_RUN_ID;
   delete process.env.AIONUI_BACKEND_LOCAL_BINARY;
+  delete process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR;
   rmSync(join(tmpdir(), 'aioncore-prepare', 'v0.1.46'), { recursive: true, force: true });
   rmSync(join(tmpdir(), 'aioncore-prepare-actions', '123'), { recursive: true, force: true });
 });
@@ -133,9 +134,8 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     );
   });
 
-  // These cases execute a temporary POSIX shell-script aioncore binary. Windows
-  // coverage for contract rejection lives in the verifier/local-bundle tests.
-  posixFakeToolchainIt('hard fails Actions artifact input when prepared managed resources lack contract', () => {
+  // These cases execute a temporary POSIX shell-script aioncore binary.
+  posixFakeToolchainIt('prepares Actions artifact input without managed-resources', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-actions-gate-'));
     const fakeBin = createFakeToolchain(tmp);
     const previousPath = process.env.PATH;
@@ -143,14 +143,14 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     process.env.AIONUI_BACKEND_RUN_ID = '123';
 
     try {
-      expect(() =>
-        prepareAioncore({
-          projectRoot: join(tmp, 'project'),
-          platform: 'linux',
-          arch: 'x64',
-          version: 'v0.1.46',
-        })
-      ).toThrow(/managed-resources\/manifest\.json/);
+      const result = prepareAioncore({
+        projectRoot: join(tmp, 'project'),
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.46',
+      });
+      expect(result.prepared).toBe(true);
+      expect(result.sourceType).toBe('actions-artifact');
     } finally {
       if (previousPath === undefined) delete process.env.PATH;
       else process.env.PATH = previousPath;
@@ -158,21 +158,21 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     }
   });
 
-  posixFakeToolchainIt('hard fails GitHub release download input when prepared managed resources lack contract', () => {
+  posixFakeToolchainIt('prepares GitHub release download input without managed-resources', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-download-gate-'));
     const fakeBin = createFakeToolchain(tmp);
     const previousPath = process.env.PATH;
     process.env.PATH = `${fakeBin}${delimiter}${previousPath || ''}`;
 
     try {
-      expect(() =>
-        prepareAioncore({
-          projectRoot: join(tmp, 'project'),
-          platform: 'linux',
-          arch: 'x64',
-          version: 'v0.1.46',
-        })
-      ).toThrow(/managed-resources\/manifest\.json/);
+      const result = prepareAioncore({
+        projectRoot: join(tmp, 'project'),
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.46',
+      });
+      expect(result.prepared).toBe(true);
+      expect(result.sourceType).toBe('download');
     } finally {
       if (previousPath === undefined) delete process.env.PATH;
       else process.env.PATH = previousPath;
@@ -180,7 +180,7 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     }
   });
 
-  posixFakeToolchainIt('hard fails local binary fallback when prepared managed resources lack contract', () => {
+  posixFakeToolchainIt('prepares local binary fallback without managed-resources', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'aionui-local-binary-gate-'));
     const localBinary = join(tmp, 'aioncore');
     writeExecutable(localBinary, '#!/usr/bin/env bash\nexit 0\n');
@@ -190,14 +190,14 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
     process.env.AIONUI_BACKEND_LOCAL_BINARY = localBinary;
 
     try {
-      expect(() =>
-        prepareAioncore({
-          projectRoot: join(tmp, 'project'),
-          platform: 'linux',
-          arch: 'x64',
-          version: 'v0.1.46',
-        })
-      ).toThrow(/managed-resources\/manifest\.json/);
+      const result = prepareAioncore({
+        projectRoot: join(tmp, 'project'),
+        platform: 'linux',
+        arch: 'x64',
+        version: 'v0.1.46',
+      });
+      expect(result.prepared).toBe(true);
+      expect(result.sourceType).toBe('local-binary');
     } finally {
       if (previousPath === undefined) delete process.env.PATH;
       else process.env.PATH = previousPath;

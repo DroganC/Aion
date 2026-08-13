@@ -7,11 +7,11 @@ use std::time::Duration;
 
 use tracing::{debug, info, warn};
 
-pub use managed::{
-    install_and_validate as install_managed_runtime, managed_node_contract_for_export,
-    probe_support as probe_node_runtime_supported,
+pub use managed::{install_and_validate as install_managed_runtime, managed_node_contract_for_export};
+pub use system::{
+    MIN_SYSTEM_NODE_MAJOR, derive_runtime_root, probe_support as probe_node_runtime_supported, tool_command,
+    validate_same_root,
 };
-pub use system::{derive_runtime_root, tool_command, validate_same_root};
 pub use types::{
     DoctorRow, NodeRuntimeError, NodeRuntimeFailureKind, NodeRuntimeProgress, NodeRuntimeProgressPhase,
     NodeRuntimeProgressReporter, NodeRuntimeSupport, NodeTool, ResolvedCommand, ResolvedNodeRuntime,
@@ -73,7 +73,38 @@ pub async fn ensure_node_runtime_with_reporter(
         return Ok(runtime);
     }
 
-    let runtime = install_managed_runtime_with_reporter(reporter).await?;
+    emit_runtime_progress(
+        reporter,
+        NodeRuntimeProgress::validating(format!(
+            "resolving system Node.js runtime (required major >= {MIN_SYSTEM_NODE_MAJOR})"
+        )),
+    );
+    let paths = system::resolve_system_runtime_paths().map_err(|error| {
+        emit_runtime_progress(
+            reporter,
+            NodeRuntimeProgress::failed(NodeRuntimeFailureKind::ValidationFailed, error.to_string()),
+        );
+        error
+    })?;
+    let runtime = validate_runtime(paths, Some(MIN_SYSTEM_NODE_MAJOR))
+        .await
+        .map_err(|error| {
+            // Rewrite low-level version errors into an explicit product message.
+            let message = error.to_string();
+            let clarified = if message.contains("below required major") {
+                NodeRuntimeError::system_invalid(format!(
+                    "{message}; aioncore requires system Node.js major >= {MIN_SYSTEM_NODE_MAJOR}"
+                ))
+            } else {
+                error
+            };
+            emit_runtime_progress(
+                reporter,
+                NodeRuntimeProgress::failed(NodeRuntimeFailureKind::ValidationFailed, clarified.to_string()),
+            );
+            clarified
+        })?;
+    emit_runtime_ready(reporter, &runtime);
     *managed_runtime_cache().lock().await = Some(runtime.clone());
     log_runtime_selected(&runtime);
     Ok(runtime)
@@ -109,6 +140,7 @@ pub async fn ensure_runtime_command_with_reporter(
 
 fn runtime_source_label(source: ResolvedNodeSource) -> &'static str {
     match source {
+        ResolvedNodeSource::System => "system",
         ResolvedNodeSource::Bundled => "bundled",
         ResolvedNodeSource::Managed => "managed",
     }
@@ -170,17 +202,24 @@ async fn cached_managed_runtime(reporter: Option<&dyn NodeRuntimeProgressReporte
 }
 
 fn emit_runtime_ready(reporter: Option<&dyn NodeRuntimeProgressReporter>, runtime: &ResolvedNodeRuntime) {
-    if let Some(reporter) = reporter {
-        reporter.report(NodeRuntimeProgress::ready(format!(
+    emit_runtime_progress(
+        reporter,
+        NodeRuntimeProgress::ready(format!(
             "{} Node runtime {} is ready",
             runtime_source_label(runtime.source),
             runtime.version
-        )));
+        )),
+    );
+}
+
+fn emit_runtime_progress(reporter: Option<&dyn NodeRuntimeProgressReporter>, progress: NodeRuntimeProgress) {
+    if let Some(reporter) = reporter {
+        reporter.report(progress);
     }
 }
 
 pub fn doctor_snapshot() -> Vec<DoctorRow> {
-    if let Some(runtime) = managed::probe_preferred_local_runtime() {
+    if let Some(runtime) = system::probe_preferred_system_runtime() {
         let source = runtime_source_label(runtime.source);
         return vec![
             DoctorRow {
@@ -202,7 +241,7 @@ pub fn doctor_snapshot() -> Vec<DoctorRow> {
     }
 
     let support = probe_node_runtime_supported();
-    let source = if support.supported { "managed" } else { "unavailable" };
+    let source = if support.supported { "system" } else { "unavailable" };
     vec![
         DoctorRow {
             tool: "node".into(),
@@ -231,8 +270,7 @@ async fn validate_runtime(
         && node_version.major < min_major
     {
         return Err(NodeRuntimeError::system_invalid(format!(
-            "node version {} is below required major {}",
-            node_version, min_major
+            "node version {node_version} is below required major {min_major}; install Node.js major >= {min_major}"
         )));
     }
 
@@ -240,12 +278,6 @@ async fn validate_runtime(
     let _ = command_version(runtime.npx_command(), "npx").await?;
     runtime.version = node_version;
     Ok(runtime)
-}
-
-async fn install_managed_runtime_with_reporter(
-    reporter: Option<&dyn NodeRuntimeProgressReporter>,
-) -> Result<ResolvedNodeRuntime, NodeRuntimeError> {
-    managed::install_and_validate_with_reporter(reporter).await
 }
 
 // Bounded retry budget for the managed Node `--version` validation probe.
