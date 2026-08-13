@@ -48,7 +48,6 @@ describe('useTheme selection', () => {
   beforeEach(() => {
     configGetMock.mockImplementation((key: string) => {
       if (key === 'theme.activeId') return 'light';
-      if (key === 'theme.userThemes') return [];
       return undefined;
     });
     setActiveThemeMock.mockReset();

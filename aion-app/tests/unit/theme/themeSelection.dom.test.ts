@@ -36,7 +36,7 @@ type BrowserWindow = Window & { electronAPI?: unknown };
 describe('setActiveTheme', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    configGetMock.mockReturnValue([]);
+    configGetMock.mockReturnValue(undefined);
     configSetMock.mockResolvedValue(undefined);
     publishMock.mockResolvedValue(undefined);
     delete (window as BrowserWindow).electronAPI;
@@ -50,7 +50,15 @@ describe('setActiveTheme', () => {
     const selected = await setActiveTheme('dark');
 
     expect(selected.appearance).toBe('dark');
+    expect(configSetMock).toHaveBeenCalledWith('theme.activeId', 'dark');
     expect(publishMock).not.toHaveBeenCalled();
+  });
+
+  it('normalizes unknown theme ids to follow system', async () => {
+    const selected = await setActiveTheme('misaka-mikoto-theme');
+
+    expect(configSetMock).toHaveBeenCalledWith('theme.activeId', 'system');
+    expect(selected.id === 'light' || selected.id === 'dark').toBe(true);
   });
 
   it('publishes the selected theme when running inside Electron', async () => {

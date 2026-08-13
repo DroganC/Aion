@@ -5,7 +5,6 @@
  */
 
 import type { SpeechToTextConfig } from '@/common/types/provider/speech';
-import type { Theme } from '@/common/theme/types';
 import { buildStorage } from '@/common/platform/storage';
 
 // 系统配置存储
@@ -30,10 +29,8 @@ export interface IConfigStorageRefer {
   'webui.desktop.allowRemote'?: boolean;
   /** 桌面模式下 WebUI 端口 / WebUI port in desktop mode */
   'webui.desktop.port'?: number;
-  /** Active unified theme ID */
+  /** Active unified theme ID (`light` | `dark` | `system`) */
   'theme.activeId': string;
-  /** User-created themes */
-  'theme.userThemes': Theme[];
   // 是否在粘贴文件到工作区时询问确认（true = 不再询问）
   'workspace.pasteConfirm'?: boolean;
   // 上传的文件是否保存到工作区目录（true = 保存到工作区，false = 保存到缓存目录）

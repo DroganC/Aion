@@ -190,4 +190,4 @@ Measured across `packages/desktop/src/renderer` (raw `var()` + UnoCSS class refe
 }
 ```
 
-User themes created in **Settings → Appearance → 手动添加** are always CSS-based (`tokens` omitted).
+User themes created in Settings → Appearance are no longer supported; only Light / Dark / Follow System remain.

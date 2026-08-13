@@ -11,7 +11,7 @@ import { applyTheme, seedElectronTheme, setActiveTheme } from '@/renderer/utils/
 import { getSystemPrefersDark } from '@/renderer/utils/theme/systemAppearance';
 import { startSystemThemeWatcher } from '@/renderer/utils/theme/systemThemeWatcher';
 import { BUILTIN_THEMES } from '@renderer/theme/builtinThemes';
-import { LIGHT_THEME_ID } from '@/common/theme/constants';
+import { LIGHT_THEME_ID, normalizeActiveThemeId } from '@/common/theme/constants';
 import type { Theme } from '@/common/theme/types';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -26,17 +26,20 @@ function cacheAppearance(theme: Theme): void {
 }
 
 function getPersistedActiveId(): string {
-  return (configService.get('theme.activeId') as string) || LIGHT_THEME_ID;
+  return normalizeActiveThemeId(configService.get('theme.activeId') as string | undefined);
 }
 
 async function initActiveTheme(): Promise<Theme> {
   try {
     await configService.whenReady();
     const activeId = getPersistedActiveId();
-    const userThemes = (configService.get('theme.userThemes') as Theme[]) ?? [];
-    const resolved = resolveActiveTheme(activeId, [...BUILTIN_THEMES, ...userThemes], getSystemPrefersDark());
+    const resolved = resolveActiveTheme(activeId, BUILTIN_THEMES, getSystemPrefersDark());
     applyTheme(resolved);
     cacheAppearance(resolved);
+    // Persist migration: decorative / custom ids become Follow System.
+    if ((configService.get('theme.activeId') as string | undefined) !== activeId) {
+      void configService.set('theme.activeId', activeId).catch(() => {});
+    }
     // Seed the main-process relay so other surfaces (e.g. markdown shadow DOM) can pull it.
     void seedElectronTheme(resolved).catch(() => {});
     return resolved;
@@ -53,7 +56,7 @@ if (typeof window !== 'undefined') initialPromise = initActiveTheme();
 
 /**
  * Returns [resolvedActiveTheme, selectThemeById, rawActiveId]. `rawActiveId` may be the
- * `system` sentinel while the resolved theme is the Light/Dark builtin — the gallery
+ * `system` sentinel while the resolved theme is the Light/Dark builtin — the picker
  * highlights cards by `rawActiveId`.
  */
 const useTheme = (): [Theme | null, (activeId: string) => Promise<void>, string | null] => {
@@ -75,7 +78,7 @@ const useTheme = (): [Theme | null, (activeId: string) => Promise<void>, string 
       if (mounted) {
         setActive((prev) => (prev?.id === t.id ? prev : t));
         // Best-effort: config was persisted before the broadcast, fall back to the resolved id.
-        setActiveId((configService.get('theme.activeId') as string) || t.id);
+        setActiveId(normalizeActiveThemeId((configService.get('theme.activeId') as string) || t.id));
       }
       cacheAppearance(t);
     });
@@ -89,8 +92,9 @@ const useTheme = (): [Theme | null, (activeId: string) => Promise<void>, string 
 
   const select = useCallback(async (selectedId: string) => {
     const resolved = await setActiveTheme(selectedId);
+    const normalizedId = normalizeActiveThemeId(selectedId);
     setActive(resolved);
-    setActiveId(selectedId);
+    setActiveId(normalizedId);
     cacheAppearance(resolved);
   }, []);
 

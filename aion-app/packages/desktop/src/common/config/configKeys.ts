@@ -1,5 +1,3 @@
-import type { Theme } from '@/common/theme/types';
-
 export type ConfigKeyMap = {
   language: string;
   'ui.zoomFactor': number | undefined;
@@ -11,7 +9,6 @@ export type ConfigKeyMap = {
   'webui.desktop.allowRemote': boolean | undefined;
   'webui.desktop.port': number | undefined;
   'theme.activeId': string;
-  'theme.userThemes': Theme[];
   'workspace.pasteConfirm': boolean | undefined;
   'guid.lastAssistantId': string | undefined;
   /** User-defined order for the enabled assistant picker surfaces. */

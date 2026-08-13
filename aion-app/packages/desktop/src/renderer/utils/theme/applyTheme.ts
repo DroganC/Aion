@@ -7,6 +7,7 @@
 import type { Theme } from '@/common/theme/types';
 import { configService } from '@/common/config/configService';
 import { ipcBridge } from '@/common';
+import { normalizeActiveThemeId } from '@/common/theme/constants';
 import { resolveActiveTheme } from '@/common/theme/resolveTheme';
 import { BUILTIN_THEMES } from '@renderer/theme/builtinThemes';
 import { processCustomCss } from './customCssProcessor';
@@ -80,10 +81,10 @@ export function applyTheme(theme: Theme, root: Document = document): void {
 
 /** Resolve `activeId` locally, apply, persist, and publish to Electron for cross-window broadcast. */
 export async function setActiveTheme(activeId: string): Promise<Theme> {
-  const userThemes = (configService.get('theme.userThemes') as Theme[] | undefined) ?? [];
-  const resolved = resolveActiveTheme(activeId, [...BUILTIN_THEMES, ...userThemes], getSystemPrefersDark());
+  const normalizedId = normalizeActiveThemeId(activeId);
+  const resolved = resolveActiveTheme(normalizedId, BUILTIN_THEMES, getSystemPrefersDark());
   applyTheme(resolved);
-  await configService.set('theme.activeId', activeId);
+  await configService.set('theme.activeId', normalizedId);
   await publishThemeToElectron(resolved);
   return resolved;
 }

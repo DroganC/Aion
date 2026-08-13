@@ -39,7 +39,7 @@ describe('startSystemThemeWatcher', () => {
 
   it('does nothing when a non-system theme is active', () => {
     const media = installMatchMedia();
-    configGet.mockReturnValue('misaka-mikoto-theme');
+    configGet.mockReturnValue('dark');
     startSystemThemeWatcher();
     media.fire(true);
     expect(setActiveTheme).not.toHaveBeenCalled();

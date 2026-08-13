@@ -36,7 +36,7 @@ packages/desktop/src/renderer/
 
 - **Prefer UnoCSS** utility classes (`flex items-center gap-8px`)
 - **Complex/reusable styles**: CSS Modules (`ComponentName.module.css`). No plain `.css` for components
-- **Semantic color tokens only**: Use `uno.config.ts` tokens (`text-t-primary`, `bg-base`, `border-b-base`) or CSS variables. No hardcoded colors. Exception: `CssThemeSettings/presets/`
+- **Semantic color tokens only**: Use `uno.config.ts` tokens (`text-t-primary`, `bg-base`, `border-b-base`) or CSS variables. No hardcoded colors.
 - **No inline styles** except dynamically computed values
 - **Arco overrides**: In component's CSS Module via `:global(.arco-xxx)`. No global override files
 - **Global styles**: Only in `packages/desktop/src/renderer/styles/`

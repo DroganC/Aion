@@ -8,8 +8,7 @@ export type ThemeAppearance = 'light' | 'dark';
 
 /**
  * Unified theme. `appearance` drives data-theme + arco-theme.
- * `css` is the escape hatch (decorative + user themes). `tokens` is an optional
- * forward-looking structured channel applied as :root variables when present.
+ * Optional `css` / `tokens` remain for injection helpers; product themes are Light/Dark only.
  */
 export type Theme = {
   id: string;
