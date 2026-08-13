@@ -2784,37 +2784,34 @@ async fn create_for_conversation_helper_uses_assistant_metadata_full_auto_mode()
 async fn create_for_conversation_helper_uses_codex_canonical_full_auto_mode_from_fallback() {
     let (svc, cron_repo, _, _, conv_service, agent_metadata_repo, _) =
         setup_with_conv_runtime_and_agent_metadata().await;
-    let codex = agent_metadata_repo
-        .find_builtin_by_backend("codex")
-        .await
-        .unwrap()
-        .expect("seeded codex metadata");
+    // Codex is no longer in the product catalog; seed a disposable row so the
+    // fallback_full_auto_mode path for backend=codex can still be exercised.
     agent_metadata_repo
         .upsert(&UpsertAgentMetadataParams {
-            id: &codex.id,
-            icon: codex.icon.as_deref(),
-            name: &codex.name,
-            name_i18n: codex.name_i18n.as_deref(),
-            description: codex.description.as_deref(),
-            description_i18n: codex.description_i18n.as_deref(),
-            backend: codex.backend.as_deref(),
-            agent_type: &codex.agent_type,
-            agent_source: &codex.agent_source,
-            agent_source_info: codex.agent_source_info.as_deref(),
-            enabled: codex.enabled,
-            command: codex.command.as_deref(),
-            args: codex.args.as_deref(),
-            env: codex.env.as_deref(),
-            native_skills_dirs: codex.native_skills_dirs.as_deref(),
-            behavior_policy: codex.behavior_policy.as_deref(),
+            id: "8e1acf31",
+            icon: None,
+            name: "Codex CLI",
+            name_i18n: None,
+            description: None,
+            description_i18n: None,
+            backend: Some("codex"),
+            agent_type: "acp",
+            agent_source: "builtin",
+            agent_source_info: Some(r#"{"binary_name":"codex"}"#),
+            enabled: true,
+            command: Some("codex"),
+            args: Some(r#"["acp"]"#),
+            env: Some("[]"),
+            native_skills_dirs: None,
+            behavior_policy: None,
             yolo_id: None,
-            agent_capabilities: codex.agent_capabilities.as_deref(),
-            auth_methods: codex.auth_methods.as_deref(),
-            config_options: codex.config_options.as_deref(),
-            available_modes: codex.available_modes.as_deref(),
-            available_models: codex.available_models.as_deref(),
-            available_commands: codex.available_commands.as_deref(),
-            sort_order: codex.sort_order,
+            agent_capabilities: None,
+            auth_methods: None,
+            config_options: None,
+            available_modes: None,
+            available_models: None,
+            available_commands: None,
+            sort_order: 3110,
         })
         .await
         .unwrap();

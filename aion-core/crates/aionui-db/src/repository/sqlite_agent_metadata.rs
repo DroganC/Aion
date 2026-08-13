@@ -856,36 +856,16 @@ mod tests {
     async fn seed_rows_populated_after_migrations() {
         let (repo, _db) = setup().await;
         let rows = repo.list_all().await.unwrap();
-        // 39 ACP vendors + 2 non-ACP builtins + 1 internal = 42.
-        assert_eq!(rows.len(), 43, "seed rows: 42 pre-existing + antigravity");
+        // Migration 038 trims the official catalog to Aion CLI + OpenCode + Pi.
+        assert_eq!(rows.len(), 3, "trimmed official catalog size");
         assert!(
             rows.iter()
-                .any(|r| r.name == "Claude Code" && r.agent_source == "builtin")
+                .any(|r| r.name == "Aion CLI" && r.agent_source == "internal" && r.agent_type == "aionrs")
         );
         assert!(
             rows.iter()
-                .any(|r| r.name == "Aion CLI" && r.agent_source == "internal")
+                .any(|r| r.name == "OpenCode" && r.backend.as_deref() == Some("opencode") && r.agent_source == "builtin")
         );
-        // Nanobot and OpenClaw are builtin (not internal).
-        assert!(rows.iter().any(|r| r.name == "Nanobot" && r.agent_source == "builtin"));
-        assert!(rows.iter().any(|r| r.name == "OpenClaw"
-            && r.agent_type == "acp"
-            && r.backend.as_deref() == Some("openclaw")
-            && r.agent_source == "builtin"));
-        assert!(
-            rows.iter()
-                .any(|r| r.name == "OpenClaw" && r.agent_type == "openclaw-gateway" && r.agent_source == "builtin")
-        );
-        let hermes = rows
-            .iter()
-            .find(|r| r.name == "Hermes" && r.agent_source == "builtin")
-            .expect("seeded hermes row");
-        assert_eq!(hermes.yolo_id, None);
-        let codex = rows
-            .iter()
-            .find(|r| r.name == "Codex CLI" && r.backend.as_deref() == Some("codex") && r.agent_source == "builtin")
-            .expect("seeded codex row");
-        assert_eq!(codex.yolo_id.as_deref(), Some("agent-full-access"));
         let pi = rows
             .iter()
             .find(|r| r.name == "Pi" && r.backend.as_deref() == Some("pi") && r.agent_source == "builtin")
@@ -901,17 +881,17 @@ mod tests {
     #[tokio::test]
     async fn list_all_clears_invalid_utf8_cache_field_and_keeps_row() {
         let (repo, db) = setup().await;
-        corrupt_cache_field(&db, "2d23ff1c", "config_options", "FF").await;
+        corrupt_cache_field(&db, "53861a53", "config_options", "FF").await;
 
         let rows = repo.list_all().await.unwrap();
-        let claude = rows
+        let opencode = rows
             .iter()
-            .find(|row| row.id == "2d23ff1c")
+            .find(|row| row.id == "53861a53")
             .expect("corrupted cache field must not remove the row");
 
-        assert!(claude.config_options.is_none());
-        assert_eq!(claude.name, "Claude Code");
-        assert_eq!(cache_field_blob(&db, "2d23ff1c", "config_options").await, None);
+        assert!(opencode.config_options.is_none());
+        assert_eq!(opencode.name, "OpenCode");
+        assert_eq!(cache_field_blob(&db, "53861a53", "config_options").await, None);
     }
 
     #[tokio::test]
@@ -925,10 +905,10 @@ mod tests {
             "available_models",
             "available_commands",
         ] {
-            corrupt_cache_field(&db, "2d23ff1c", field, "C3").await;
+            corrupt_cache_field(&db, "53861a53", field, "C3").await;
         }
 
-        let row = repo.get("2d23ff1c").await.unwrap().expect("seed row");
+        let row = repo.get("53861a53").await.unwrap().expect("seed row");
 
         assert!(row.agent_capabilities.is_none());
         assert!(row.auth_methods.is_none());
@@ -945,7 +925,7 @@ mod tests {
             "available_commands",
         ] {
             assert_eq!(
-                cache_field_blob(&db, "2d23ff1c", field).await,
+                cache_field_blob(&db, "53861a53", field).await,
                 None,
                 "{field} should be cleared"
             );
@@ -956,11 +936,11 @@ mod tests {
     async fn find_by_source_and_name_hits_seed_row() {
         let (repo, _db) = setup().await;
         let row = repo
-            .find_by_source_and_name("builtin", "Claude Code")
+            .find_by_source_and_name("builtin", "OpenCode")
             .await
             .unwrap()
-            .expect("seeded claude row");
-        assert_eq!(row.backend.as_deref(), Some("claude"));
+            .expect("seeded OpenCode row");
+        assert_eq!(row.backend.as_deref(), Some("opencode"));
         assert_eq!(row.agent_type, "acp");
     }
 
@@ -968,8 +948,11 @@ mod tests {
     async fn seed_rows_include_icon_backfill() {
         let (repo, _db) = setup().await;
 
-        let claude = repo.get("2d23ff1c").await.unwrap().expect("seeded claude row");
-        assert_eq!(claude.icon.as_deref(), Some("/api/assets/logos/ai-major/claude.svg"));
+        let opencode = repo.get("53861a53").await.unwrap().expect("seeded OpenCode row");
+        assert_eq!(
+            opencode.icon.as_deref(),
+            Some("/api/assets/logos/tools/coding/opencode-light.svg")
+        );
 
         let rows = repo.list_all().await.unwrap();
         let aionrs = rows
@@ -996,33 +979,28 @@ mod tests {
             Some("auto_edit")
         );
 
-        let kiro = repo.get("e044000d").await.unwrap().expect("seeded kiro row");
-        assert!(kiro.icon.is_none());
+        let pi = repo.get("484e4bf2").await.unwrap().expect("seeded Pi row");
+        assert_eq!(pi.icon.as_deref(), Some("/api/assets/logos/tools/pi.svg"));
     }
 
     #[tokio::test]
-    async fn builtin_managed_acp_rows_drop_runtime_bridge_command() {
+    async fn kept_builtin_acp_launch_contracts() {
         let (repo, _db) = setup().await;
 
-        let claude = repo.get("2d23ff1c").await.unwrap().expect("seeded claude row");
-        assert!(claude.command.is_none());
-        assert_eq!(claude.args.as_deref(), Some(r#"[]"#));
-        assert_eq!(claude.agent_source_info.as_deref(), Some(r#"{"binary_name":"claude"}"#));
-
-        let codex = repo.get("8e1acf31").await.unwrap().expect("seeded codex row");
-        assert!(codex.command.is_none());
-        assert_eq!(codex.args.as_deref(), Some(r#"[]"#));
-        assert_eq!(codex.agent_source_info.as_deref(), Some(r#"{"binary_name":"codex"}"#));
-
-        let codebuddy = repo.get("8b20fd41").await.unwrap().expect("seeded codebuddy row");
-        assert_eq!(codebuddy.command.as_deref(), Some("npx"));
+        let opencode = repo.get("53861a53").await.unwrap().expect("seeded OpenCode row");
+        assert_eq!(opencode.command.as_deref(), Some("opencode"));
+        assert_eq!(opencode.args.as_deref(), Some(r#"["acp"]"#));
         assert_eq!(
-            codebuddy.args.as_deref(),
-            Some(r#"["-y","--package","@tencent-ai/codebuddy-code","codebuddy","--acp"]"#)
+            opencode.agent_source_info.as_deref(),
+            Some(r#"{"binary_name":"opencode"}"#)
         );
+
+        let pi = repo.get("484e4bf2").await.unwrap().expect("seeded Pi row");
+        assert_eq!(pi.command.as_deref(), Some("npx"));
+        assert_eq!(pi.args.as_deref(), Some(r#"["-y","pi-acp"]"#));
         assert_eq!(
-            codebuddy.agent_source_info.as_deref(),
-            Some(r#"{"binary_name":"codebuddy","bridge_binary":"npx"}"#)
+            pi.agent_source_info.as_deref(),
+            Some(r#"{"binary_name":"pi","bridge_binary":"npx"}"#)
         );
     }
 
@@ -1055,7 +1033,7 @@ mod tests {
         let (repo, _db) = setup().await;
         let updated = repo
             .apply_handshake(
-                "2d23ff1c",
+                "53861a53",
                 &UpdateAgentHandshakeParams {
                     agent_capabilities: Some(Some(r#"{"loadSession":true}"#)),
                     auth_methods: Some(Some(r#"[{"id":"oauth"}]"#)),
@@ -1064,7 +1042,7 @@ mod tests {
             )
             .await
             .unwrap()
-            .expect("claude row exists");
+            .expect("OpenCode row exists");
 
         assert_eq!(updated.agent_capabilities.as_deref(), Some(r#"{"loadSession":true}"#));
         assert_eq!(updated.auth_methods.as_deref(), Some(r#"[{"id":"oauth"}]"#));
@@ -1074,11 +1052,11 @@ mod tests {
     #[tokio::test]
     async fn apply_handshake_reads_existing_row_through_safe_mapper() {
         let (repo, db) = setup().await;
-        corrupt_cache_field(&db, "2d23ff1c", "config_options", "FF").await;
+        corrupt_cache_field(&db, "53861a53", "config_options", "FF").await;
 
         let updated = repo
             .apply_handshake(
-                "2d23ff1c",
+                "53861a53",
                 &UpdateAgentHandshakeParams {
                     agent_capabilities: Some(Some(r#"{"loadSession":true}"#)),
                     ..Default::default()
@@ -1090,14 +1068,14 @@ mod tests {
 
         assert_eq!(updated.agent_capabilities.as_deref(), Some(r#"{"loadSession":true}"#));
         assert!(updated.config_options.is_none());
-        assert_eq!(cache_field_blob(&db, "2d23ff1c", "config_options").await, None);
+        assert_eq!(cache_field_blob(&db, "53861a53", "config_options").await, None);
     }
 
     #[tokio::test]
     async fn apply_handshake_can_clear_to_null() {
         let (repo, _db) = setup().await;
         repo.apply_handshake(
-            "2d23ff1c",
+            "53861a53",
             &UpdateAgentHandshakeParams {
                 agent_capabilities: Some(Some(r#"{"x":1}"#)),
                 ..Default::default()
@@ -1108,7 +1086,7 @@ mod tests {
 
         let cleared = repo
             .apply_handshake(
-                "2d23ff1c",
+                "53861a53",
                 &UpdateAgentHandshakeParams {
                     agent_capabilities: Some(None),
                     ..Default::default()
@@ -1139,8 +1117,8 @@ mod tests {
     #[tokio::test]
     async fn set_enabled_toggles_flag() {
         let (repo, _db) = setup().await;
-        assert!(repo.set_enabled("2d23ff1c", false).await.unwrap());
-        let row = repo.get("2d23ff1c").await.unwrap().unwrap();
+        assert!(repo.set_enabled("53861a53", false).await.unwrap());
+        let row = repo.get("53861a53").await.unwrap().unwrap();
         assert!(!row.enabled);
         assert!(!repo.set_enabled("missing", true).await.unwrap());
     }
@@ -1252,11 +1230,11 @@ mod tests {
     async fn global_builtin_rows_are_visible_to_all_users() {
         let (repo, _db) = setup().await;
 
-        let user_a = repo.get_for_user(USER_A, "2d23ff1c").await.unwrap().unwrap();
-        let user_b = repo.get_for_user(USER_B, "2d23ff1c").await.unwrap().unwrap();
+        let user_a = repo.get_for_user(USER_A, "53861a53").await.unwrap().unwrap();
+        let user_b = repo.get_for_user(USER_B, "53861a53").await.unwrap().unwrap();
 
-        assert_eq!(user_a.name, "Claude Code");
-        assert_eq!(user_b.name, "Claude Code");
+        assert_eq!(user_a.name, "OpenCode");
+        assert_eq!(user_b.name, "OpenCode");
         assert_eq!(user_a.agent_source, "builtin");
         assert_eq!(user_b.agent_source, "builtin");
     }
@@ -1296,20 +1274,20 @@ mod tests {
         // agent enable — that happens one layer up on assistants.
         let (repo, db) = setup().await;
 
-        assert!(repo.set_enabled_for_user(USER_B, "2d23ff1c", false).await.unwrap());
+        assert!(repo.set_enabled_for_user(USER_B, "53861a53", false).await.unwrap());
 
         // Both users read the disabled state off the catalog.
-        assert!(!repo.get_for_user(USER_B, "2d23ff1c").await.unwrap().unwrap().enabled);
-        assert!(!repo.get_for_user(USER_A, "2d23ff1c").await.unwrap().unwrap().enabled);
+        assert!(!repo.get_for_user(USER_B, "53861a53").await.unwrap().unwrap().enabled);
+        assert!(!repo.get_for_user(USER_A, "53861a53").await.unwrap().unwrap().enabled);
 
         // The catalog row itself flipped, and there is still exactly one row.
         let global_enabled: bool =
-            sqlx::query_scalar("SELECT enabled FROM agent_metadata WHERE user_id IS NULL AND agent_id = '2d23ff1c'")
+            sqlx::query_scalar("SELECT enabled FROM agent_metadata WHERE user_id IS NULL AND agent_id = '53861a53'")
                 .fetch_one(db.pool())
                 .await
                 .unwrap();
         assert!(!global_enabled);
-        let catalog_rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM agent_metadata WHERE agent_id = '2d23ff1c'")
+        let catalog_rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM agent_metadata WHERE agent_id = '53861a53'")
             .fetch_one(db.pool())
             .await
             .unwrap();
@@ -1323,19 +1301,19 @@ mod tests {
         // every user sees them, regardless of who set them.
         let (repo, db) = setup().await;
 
-        repo.update_agent_overrides_for_user(USER_B, "2d23ff1c", Some("/tmp/claude"), Some("[]"))
+        repo.update_agent_overrides_for_user(USER_B, "53861a53", Some("/tmp/claude"), Some("[]"))
             .await
             .unwrap();
 
         // Both users read the same override off the catalog.
-        let user_b = repo.get_for_user(USER_B, "2d23ff1c").await.unwrap().unwrap();
-        let user_a = repo.get_for_user(USER_A, "2d23ff1c").await.unwrap().unwrap();
+        let user_b = repo.get_for_user(USER_B, "53861a53").await.unwrap().unwrap();
+        let user_a = repo.get_for_user(USER_A, "53861a53").await.unwrap().unwrap();
         assert_eq!(user_b.command_override.as_deref(), Some("/tmp/claude"));
         assert_eq!(user_a.command_override.as_deref(), Some("/tmp/claude"));
 
         // The write mutated the single catalog row, not a per-user delta.
         let global_override: Option<String> = sqlx::query_scalar(
-            "SELECT command_override FROM agent_metadata WHERE user_id IS NULL AND agent_id = '2d23ff1c'",
+            "SELECT command_override FROM agent_metadata WHERE user_id IS NULL AND agent_id = '53861a53'",
         )
         .fetch_one(db.pool())
         .await

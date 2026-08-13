@@ -1599,44 +1599,34 @@ mod tests {
         // when none of the CLIs are installed on the test host.
         let reg = registry().await;
         let all = reg.list_all_including_hidden().await;
-        assert_eq!(all.len(), 43, "seed rows: 42 pre-existing + antigravity");
+        assert_eq!(all.len(), 3, "trimmed catalog: Aion CLI + OpenCode + Pi");
     }
 
     #[tokio::test]
-    async fn find_builtin_claude_uses_managed_acp_runtime_metadata() {
+    async fn find_builtin_opencode_uses_direct_cli_metadata() {
         let reg = registry().await;
-        let m = reg.find_builtin_by_backend("claude").await.unwrap();
-        assert!(m.command.is_none());
-        assert!(m.args.is_empty());
-        assert!(m.agent_source_info.bridge_binary.is_none());
-        assert!(m.behavior_policy.supports_side_question);
-        assert_eq!(
-            m.native_skills_dirs.as_deref(),
-            Some(&[".claude/skills".to_string()][..])
-        );
+        let m = reg.find_builtin_by_backend("opencode").await.unwrap();
+        assert_eq!(m.command.as_deref(), Some("opencode"));
+        assert_eq!(m.args, ["acp"]);
+        assert_eq!(m.agent_source_info.binary_name.as_deref(), Some("opencode"));
     }
 
     #[tokio::test]
-    async fn codex_yolo_id_maps_to_agent_full_access() {
+    async fn opencode_has_no_unverified_yolo_id() {
         let reg = registry().await;
-        let codex = reg.find_builtin_by_backend("codex").await.unwrap();
-        // Legacy AionUi yolo aliases resolve to Codex's native
-        // `agent-full-access` mode via the catalog row.
-        assert_eq!(codex.yolo_id.as_deref(), Some("agent-full-access"));
+        let opencode = reg.find_builtin_by_backend("opencode").await.unwrap();
+        // OpenCode's seeded yolo_id is `build` from 001; keep asserting the
+        // catalog value so a silent wipe would fail this test.
+        assert_eq!(opencode.yolo_id.as_deref(), Some("build"));
     }
 
     #[tokio::test]
-    async fn claude_yolo_id_maps_to_bypass_permissions() {
+    async fn removed_vendors_are_absent_from_trimmed_catalog() {
         let reg = registry().await;
-        let claude = reg.find_builtin_by_backend("claude").await.unwrap();
-        assert_eq!(claude.yolo_id.as_deref(), Some("bypassPermissions"));
-    }
-
-    #[tokio::test]
-    async fn hermes_builtin_does_not_advertise_a_yolo_id() {
-        let reg = registry().await;
-        let hermes = reg.find_builtin_by_backend("hermes").await.unwrap();
-        assert_eq!(hermes.yolo_id, None);
+        assert!(reg.find_builtin_by_backend("claude").await.is_none());
+        assert!(reg.find_builtin_by_backend("codex").await.is_none());
+        assert!(reg.find_builtin_by_backend("hermes").await.is_none());
+        assert!(reg.find_builtin_by_backend("openclaw").await.is_none());
     }
 
     #[tokio::test]
@@ -1681,7 +1671,7 @@ mod tests {
                 .unwrap_or_else(|error| panic!("missing release lock for {backend}: {error}"));
             locked += 1;
         }
-        assert_eq!(locked, 13);
+        assert_eq!(locked, 1, "only Pi remains as a builtin npx agent");
     }
 
     /// On a host that has *none* of the seeded CLIs installed, the
@@ -1716,9 +1706,9 @@ mod tests {
         let reg = registry().await;
         let all = reg.list_all_including_hidden().await;
         let count = |t: AgentType| all.iter().filter(|m| m.agent_type == t).count();
-        assert_eq!(count(AgentType::Acp), 39);
-        assert_eq!(count(AgentType::Nanobot), 1);
-        assert_eq!(count(AgentType::OpenclawGateway), 1);
+        assert_eq!(count(AgentType::Acp), 2, "OpenCode + Pi");
+        assert_eq!(count(AgentType::Nanobot), 0);
+        assert_eq!(count(AgentType::OpenclawGateway), 0);
         assert_eq!(count(AgentType::Aionrs), 1);
     }
 
@@ -1739,7 +1729,7 @@ mod tests {
     #[tokio::test]
     async fn apply_handshake_persists_json_payload() {
         let reg = registry().await;
-        let claude = reg.find_builtin_by_backend("claude").await.unwrap();
+        let opencode = reg.find_builtin_by_backend("opencode").await.unwrap();
 
         let snapshot = AgentHandshake {
             auth_methods: Some(serde_json::json!([
@@ -1747,11 +1737,11 @@ mod tests {
             ])),
             ..Default::default()
         };
-        reg.apply_handshake_inner(SYSTEM_DEFAULT_USER_ID, &claude.id, &snapshot)
+        reg.apply_handshake_inner(SYSTEM_DEFAULT_USER_ID, &opencode.id, &snapshot)
             .await
             .unwrap();
 
-        let refreshed = reg.get(&claude.id).await.unwrap();
+        let refreshed = reg.get(&opencode.id).await.unwrap();
         let methods = refreshed.handshake.auth_methods.unwrap();
         assert_eq!(methods.as_array().unwrap().len(), 1);
     }
@@ -1775,7 +1765,7 @@ mod tests {
         let reg = AgentRegistry::new(repo.clone());
         reg.apply_handshake_inner(
             SYSTEM_DEFAULT_USER_ID,
-            "2d23ff1c",
+            "53861a53",
             &AgentHandshake {
                 config_options: Some(serde_json::json!({
                     "config_options": [
@@ -1797,7 +1787,7 @@ mod tests {
         // A different user's handshake targets the SAME catalog row.
         reg.apply_handshake_inner(
             "user-b",
-            "2d23ff1c",
+            "53861a53",
             &AgentHandshake {
                 auth_methods: Some(serde_json::json!([{"type":"agent","id":"oauth"}])),
                 config_options: Some(serde_json::json!({
@@ -1819,11 +1809,11 @@ mod tests {
         .unwrap();
 
         let default_row = repo
-            .get_for_user(SYSTEM_DEFAULT_USER_ID, "2d23ff1c")
+            .get_for_user(SYSTEM_DEFAULT_USER_ID, "53861a53")
             .await
             .unwrap()
             .unwrap();
-        let user_b_row = repo.get_for_user("user-b", "2d23ff1c").await.unwrap().unwrap();
+        let user_b_row = repo.get_for_user("user-b", "53861a53").await.unwrap().unwrap();
 
         // Machine-level: both users see identical handshake state.
         assert_eq!(default_row.auth_methods, user_b_row.auth_methods);
@@ -1846,7 +1836,7 @@ mod tests {
         );
 
         // Everything lives on the single catalog row — no row was duplicated.
-        let catalog_rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM agent_metadata WHERE agent_id = '2d23ff1c'")
+        let catalog_rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM agent_metadata WHERE agent_id = '53861a53'")
             .fetch_one(db.pool())
             .await
             .unwrap();
@@ -1865,12 +1855,12 @@ mod tests {
     #[tokio::test]
     async fn apply_handshake_is_partial_does_not_clobber_siblings() {
         let reg = registry().await;
-        let claude = reg.find_builtin_by_backend("claude").await.unwrap();
+        let opencode = reg.find_builtin_by_backend("opencode").await.unwrap();
 
         // Write #1: agent_capabilities only.
         reg.apply_handshake_inner(
             SYSTEM_DEFAULT_USER_ID,
-            &claude.id,
+            &opencode.id,
             &AgentHandshake {
                 agent_capabilities: Some(serde_json::json!({"load_session": true})),
                 ..Default::default()
@@ -1882,7 +1872,7 @@ mod tests {
         // Write #2: auth_methods only. Capabilities must survive.
         reg.apply_handshake_inner(
             SYSTEM_DEFAULT_USER_ID,
-            &claude.id,
+            &opencode.id,
             &AgentHandshake {
                 auth_methods: Some(serde_json::json!([{"type": "agent", "id": "oauth"}])),
                 ..Default::default()
@@ -1894,7 +1884,7 @@ mod tests {
         // Write #3: available_modes only. Capabilities + auth_methods must survive.
         reg.apply_handshake_inner(
             SYSTEM_DEFAULT_USER_ID,
-            &claude.id,
+            &opencode.id,
             &AgentHandshake {
                 available_modes: Some(serde_json::json!([{"id": "code", "name": "Code"}])),
                 ..Default::default()
@@ -1903,7 +1893,7 @@ mod tests {
         .await
         .unwrap();
 
-        let refreshed = reg.get(&claude.id).await.unwrap();
+        let refreshed = reg.get(&opencode.id).await.unwrap();
         assert_eq!(
             refreshed.handshake.agent_capabilities,
             Some(serde_json::json!({"load_session": true})),
@@ -1928,7 +1918,7 @@ mod tests {
     async fn diagnostic_snapshot_pairs_rows_with_reasons() {
         let reg = registry().await;
         let snapshot = reg.diagnostic_snapshot().await;
-        assert_eq!(snapshot.len(), 43, "every row appears once");
+        assert_eq!(snapshot.len(), 3, "every trimmed catalog row appears once");
 
         for (meta, reason) in &snapshot {
             match (meta.available, reason) {
@@ -1958,11 +1948,11 @@ mod tests {
     #[tokio::test]
     async fn apply_handshake_with_empty_snapshot_is_noop() {
         let reg = registry().await;
-        let claude = reg.find_builtin_by_backend("claude").await.unwrap();
+        let opencode = reg.find_builtin_by_backend("opencode").await.unwrap();
 
         reg.apply_handshake_inner(
             SYSTEM_DEFAULT_USER_ID,
-            &claude.id,
+            &opencode.id,
             &AgentHandshake {
                 agent_capabilities: Some(serde_json::json!({"x": 1})),
                 ..Default::default()
@@ -1971,11 +1961,11 @@ mod tests {
         .await
         .unwrap();
 
-        reg.apply_handshake_inner(SYSTEM_DEFAULT_USER_ID, &claude.id, &AgentHandshake::default())
+        reg.apply_handshake_inner(SYSTEM_DEFAULT_USER_ID, &opencode.id, &AgentHandshake::default())
             .await
             .unwrap();
 
-        let refreshed = reg.get(&claude.id).await.unwrap();
+        let refreshed = reg.get(&opencode.id).await.unwrap();
         assert_eq!(
             refreshed.handshake.agent_capabilities,
             Some(serde_json::json!({"x": 1}))
