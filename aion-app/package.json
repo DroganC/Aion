@@ -111,7 +111,7 @@
     "@wecom/aibot-node-sdk": "^1.0.6",
     "@xmldom/xmldom": "^0.8.11",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^12.4.1",
+    "better-sqlite3": "^13.0.3",
     "buffer": "^6.0.3",
     "builder-util-runtime": "9.5.1",
     "classnames": "^2.5.1",
@@ -206,9 +206,9 @@
     "builder-util": "26.15.0",
     "cross-env": "^7.0.3",
     "dotenv": "^17.2.1",
-    "electron": "^37.10.3",
-    "electron-builder": "26.15.2",
-    "electron-builder-squirrel-windows": "26.15.2",
+    "electron": "^43.4.0",
+    "electron-builder": "26.15.3",
+    "electron-builder-squirrel-windows": "26.15.3",
     "electron-devtools-installer": "^4.0.0",
     "electron-vite": "^5.0.0",
     "esbuild": "^0.25.11",
@@ -217,6 +217,7 @@
     "jest-diff": "^30.0.4",
     "jsdom": "^28.1.0",
     "lint-staged": "^16.2.7",
+    "node-abi": "4.33.0",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
     "patch-package": "^8.0.0",
@@ -242,9 +243,13 @@
     "jws": "4.0.1",
     "lodash-es": "^4.17.23",
     "mdast-util-to-hast": "^13.2.1",
+    "node-abi": "4.33.0",
     "node-forge": "^1.3.2",
     "tar": "^7.5.7",
     "tmp": "^0.2.5"
+  },
+  "overrides": {
+    "node-abi": "4.33.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -260,10 +265,11 @@
   },
   "aioncoreVersion": "v0.1.63",
   "electronRebuild": {
-    "electronVersion": "^37.3.1"
+    "electronVersion": "^43.4.0"
   },
   "patchedDependencies": {
     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
   },
-  "productName": "AionUi"
+  "productName": "AionUi",
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

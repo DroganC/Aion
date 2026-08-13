@@ -635,14 +635,17 @@ const handleAppReady = async (): Promise<void> => {
   const mark = (label: string) => console.log(`[AionUi:ready] ${label} +${Math.round(performance.now() - t0)}ms`);
   mark('start');
 
+  // Never await Chrome Web Store downloads on the ready path — a slow/blocked
+  // network previously left the app with no window for minutes (looks like a hang).
   if (!app.isPackaged) {
-    try {
-      const { default: installExtension, REACT_DEVELOPER_TOOLS } = await import('electron-devtools-installer');
-      await installExtension(REACT_DEVELOPER_TOOLS);
-      console.log('[DevTools] React Developer Tools installed');
-    } catch (e) {
-      console.warn('[DevTools] Failed to install React DevTools:', e);
-    }
+    void import('electron-devtools-installer')
+      .then(({ default: installExtension, REACT_DEVELOPER_TOOLS }) => installExtension(REACT_DEVELOPER_TOOLS))
+      .then(() => {
+        console.log('[DevTools] React Developer Tools installed');
+      })
+      .catch((e) => {
+        console.warn('[DevTools] Failed to install React DevTools:', e);
+      });
   }
 
   // CLI mode: print app version and exit immediately (used by CI smoke tests)
