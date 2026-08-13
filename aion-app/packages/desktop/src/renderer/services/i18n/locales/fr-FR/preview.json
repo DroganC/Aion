@@ -127,7 +127,11 @@
     "printedToConsole": "Informations de l'élément enregistrées dans la console",
     "inspectElement": "Inspecter l'élément",
     "inspectElementEnable": "Activer l'inspecteur d'éléments",
-    "inspectElementDisable": "Désactiver l'inspecteur d'éléments"
+    "inspectElementDisable": "Désactiver l'inspecteur d'éléments",
+    "openInBrowser": "Navigateur",
+    "openInBrowserTooltip": "Ouvrir dans le navigateur par défaut du système",
+    "openInBrowserSuccess": "Ouvert dans le navigateur",
+    "openInBrowserFailed": "Échec de l’ouverture dans le navigateur"
   },
   "ppt": {
     "loading": "Démarrage de l'aperçu PPT...",

@@ -127,7 +127,11 @@
     "printedToConsole": "Element info logged to console",
     "inspectElement": "Inspect element",
     "inspectElementEnable": "Enable element inspector",
-    "inspectElementDisable": "Disable element inspector"
+    "inspectElementDisable": "Disable element inspector",
+    "openInBrowser": "Browser",
+    "openInBrowserTooltip": "Open in system default browser",
+    "openInBrowserSuccess": "Opened in browser",
+    "openInBrowserFailed": "Failed to open in browser"
   },
   "ppt": {
     "loading": "Starting PPT preview...",

@@ -127,7 +127,11 @@
     "printedToConsole": "اطلاعات عنصر در کنسول ثبت شد",
     "inspectElement": "بازرسی عنصر",
     "inspectElementEnable": "فعال‌سازی بازرس عنصر",
-    "inspectElementDisable": "غیرفعال‌سازی بازرس عنصر"
+    "inspectElementDisable": "غیرفعال‌سازی بازرس عنصر",
+    "openInBrowser": "مرورگر",
+    "openInBrowserTooltip": "باز کردن در مرورگر پیش‌فرض سیستم",
+    "openInBrowserSuccess": "در مرورگر باز شد",
+    "openInBrowserFailed": "باز کردن در مرورگر ناموفق بود"
   },
   "ppt": {
     "loading": "در حال شروع پیش‌نمایش PPT...",

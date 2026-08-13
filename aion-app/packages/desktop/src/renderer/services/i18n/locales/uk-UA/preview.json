@@ -127,7 +127,11 @@
     "printedToConsole": "Інформацію про елемент виведено в консоль",
     "inspectElement": "Інспектувати елемент",
     "inspectElementEnable": "Увімкнути інспектор елементів",
-    "inspectElementDisable": "Вимкнути інспектор елементів"
+    "inspectElementDisable": "Вимкнути інспектор елементів",
+    "openInBrowser": "Браузер",
+    "openInBrowserTooltip": "Відкрити в системному браузері за замовчуванням",
+    "openInBrowserSuccess": "Відкрито в браузері",
+    "openInBrowserFailed": "Не вдалося відкрити в браузері"
   },
   "ppt": {
     "loading": "Запуск перегляду PPT...",

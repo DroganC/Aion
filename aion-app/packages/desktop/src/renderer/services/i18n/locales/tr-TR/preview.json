@@ -127,7 +127,11 @@
     "printedToConsole": "Öğe bilgisi konsola yazıldı",
     "inspectElement": "Öğeyi İncele",
     "inspectElementEnable": "Öğe denetçisini etkinleştir",
-    "inspectElementDisable": "Öğe denetçisini devre dışı bırak"
+    "inspectElementDisable": "Öğe denetçisini devre dışı bırak",
+    "openInBrowser": "Tarayıcı",
+    "openInBrowserTooltip": "Sistem varsayılan tarayıcısında aç",
+    "openInBrowserSuccess": "Tarayıcıda açıldı",
+    "openInBrowserFailed": "Tarayıcıda açılamadı"
   },
   "ppt": {
     "loading": "PPT önizlemesi başlatılıyor...",

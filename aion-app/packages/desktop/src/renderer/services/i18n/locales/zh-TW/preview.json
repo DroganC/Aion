@@ -127,7 +127,11 @@
     "printedToConsole": "已在主控台輸出元素資訊",
     "inspectElement": "檢查元素",
     "inspectElementEnable": "啟用元素檢查",
-    "inspectElementDisable": "停用元素檢查"
+    "inspectElementDisable": "停用元素檢查",
+    "openInBrowser": "瀏覽器",
+    "openInBrowserTooltip": "在系統預設瀏覽器中開啟",
+    "openInBrowserSuccess": "已在瀏覽器中開啟",
+    "openInBrowserFailed": "無法在瀏覽器中開啟"
   },
   "ppt": {
     "loading": "正在啟動 PPT 預覽...",

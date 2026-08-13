@@ -127,7 +127,11 @@
     "printedToConsole": "Element-Info in der Konsole ausgegeben",
     "inspectElement": "Element inspizieren",
     "inspectElementEnable": "Element-Inspektor aktivieren",
-    "inspectElementDisable": "Element-Inspektor deaktivieren"
+    "inspectElementDisable": "Element-Inspektor deaktivieren",
+    "openInBrowser": "Browser",
+    "openInBrowserTooltip": "Im Standardbrowser des Systems öffnen",
+    "openInBrowserSuccess": "Im Browser geöffnet",
+    "openInBrowserFailed": "Öffnen im Browser fehlgeschlagen"
   },
   "ppt": {
     "loading": "PPT-Vorschau wird gestartet...",

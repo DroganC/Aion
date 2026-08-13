@@ -19,6 +19,13 @@ import {
   isOpenableFileRef,
   wouldDownloadEmptyFile,
 } from './previewToolbarUtils';
+import {
+  canOpenHtmlInBrowser,
+  executeHtmlBrowserOpenPlan,
+  openHtmlBlobInNewTab,
+  resolveHtmlBrowserOpenPlan,
+} from './openHtmlInBrowser';
+import { isElectronDesktop } from '@/renderer/utils/platform';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { toLocalFileHref } from '@/renderer/components/Markdown/markdownUtils';
 import { PreviewToolbarExtrasProvider, type PreviewToolbarExtras } from '../../context/PreviewToolbarExtrasContext';
@@ -527,6 +534,16 @@ const PreviewPanel: React.FC = () => {
     canOpenInSystem(Boolean(metadata?.file_path), metadata?.fileRef) &&
     shouldOfferOpenInSystem(content_type, Boolean(metadata?.oversized), FILE_TYPES_WITH_BUILTIN_OPEN);
 
+  const showOpenInBrowserButton =
+    isHTML &&
+    !metadata?.oversized &&
+    canOpenHtmlInBrowser({
+      isElectronDesktop: isElectronDesktop(),
+      content,
+      filePath: metadata?.file_path,
+      fileRef: metadata?.fileRef,
+    });
+
   // 下载文件到本地 / Download file to local system
   const handleDownload = useCallback(async () => {
     try {
@@ -671,6 +688,37 @@ const PreviewPanel: React.FC = () => {
       }
     }
   }, [metadata?.fileRef, metadata?.file_path, messageApi, t]);
+
+  // Open the HTML preview in the system default browser (Electron) or a new
+  // client tab (WebUI). Distinct from "open in system app": that button is for
+  // Office/PDF escape hatches; this one is HTML-only and prefers the browser.
+  const handleOpenInBrowser = useCallback(async () => {
+    const plan = resolveHtmlBrowserOpenPlan({
+      isElectronDesktop: isElectronDesktop(),
+      content,
+      filePath: metadata?.file_path,
+      fileRef: metadata?.fileRef,
+    });
+
+    try {
+      const opened = await executeHtmlBrowserOpenPlan(plan, {
+        openFilePath: (filePath) => ipcBridge.shell.openFile.invoke(filePath),
+        openFileRef: (fileRef) => ipcBridge.fs.openSystem.invoke({ file: fileRef }),
+        openBlobInNewTab: openHtmlBlobInNewTab,
+      });
+      if (!opened) {
+        messageApi.error(t('preview.html.openInBrowserFailed'));
+        return;
+      }
+      messageApi.success(t('preview.html.openInBrowserSuccess'));
+    } catch (err) {
+      try {
+        messageApi.error(t(previewErrorToI18nKey(classifyPreviewError(err))));
+      } catch {
+        // Context holder may be unmounted after async operation
+      }
+    }
+  }, [content, metadata?.fileRef, metadata?.file_path, messageApi, t]);
 
   // Every hook has now run, so bailing out here keeps the hook count stable.
   if (!isOpen || !activeTab) return null;
@@ -1082,6 +1130,8 @@ const PreviewPanel: React.FC = () => {
             onClose={handleClosePanel}
             inspectMode={inspectMode}
             onInspectModeToggle={() => setInspectMode(!inspectMode)}
+            showOpenInBrowserButton={showOpenInBrowserButton}
+            onOpenInBrowser={handleOpenInBrowser}
             leftExtra={toolbarExtras?.left}
             rightExtra={toolbarExtras?.right}
           />

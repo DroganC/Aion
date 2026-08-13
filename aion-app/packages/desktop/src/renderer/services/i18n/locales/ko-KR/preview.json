@@ -127,7 +127,11 @@
     "printedToConsole": "요소 정보가 콘솔에 기록되었습니다",
     "inspectElement": "요소 검사",
     "inspectElementEnable": "요소 검사기 활성화",
-    "inspectElementDisable": "요소 검사기 비활성화"
+    "inspectElementDisable": "요소 검사기 비활성화",
+    "openInBrowser": "브라우저",
+    "openInBrowserTooltip": "시스템 기본 브라우저에서 열기",
+    "openInBrowserSuccess": "브라우저에서 열었습니다",
+    "openInBrowserFailed": "브라우저에서 열지 못했습니다"
   },
   "ppt": {
     "loading": "PPT 미리보기 시작 중...",

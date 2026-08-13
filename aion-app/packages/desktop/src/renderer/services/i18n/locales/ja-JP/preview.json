@@ -127,7 +127,11 @@
     "printedToConsole": "要素情報をコンソールに出力しました",
     "inspectElement": "要素を検証",
     "inspectElementEnable": "要素インスペクターを有効化",
-    "inspectElementDisable": "要素インスペクターを無効化"
+    "inspectElementDisable": "要素インスペクターを無効化",
+    "openInBrowser": "ブラウザ",
+    "openInBrowserTooltip": "システムのデフォルトブラウザで開く",
+    "openInBrowserSuccess": "ブラウザで開きました",
+    "openInBrowserFailed": "ブラウザで開けませんでした"
   },
   "ppt": {
     "loading": "PPTプレビューを起動中...",

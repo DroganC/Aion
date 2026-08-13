@@ -127,7 +127,11 @@
     "printedToConsole": "已在控制台打印元素信息",
     "inspectElement": "审核元素",
     "inspectElementEnable": "开启审核元素",
-    "inspectElementDisable": "关闭审核元素"
+    "inspectElementDisable": "关闭审核元素",
+    "openInBrowser": "浏览器",
+    "openInBrowserTooltip": "在系统默认浏览器中打开",
+    "openInBrowserSuccess": "已在浏览器中打开",
+    "openInBrowserFailed": "无法在浏览器中打开"
   },
   "ppt": {
     "loading": "正在启动 PPT 预览...",

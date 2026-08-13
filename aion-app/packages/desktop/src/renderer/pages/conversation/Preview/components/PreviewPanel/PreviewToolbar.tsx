@@ -137,6 +137,16 @@ interface PreviewToolbarProps {
   onInspectModeToggle?: () => void;
 
   /**
+   * Whether to show "Open in browser" (HTML only).
+   */
+  showOpenInBrowserButton?: boolean;
+
+  /**
+   * Open the current HTML page in the system default browser.
+   */
+  onOpenInBrowser?: () => void;
+
+  /**
    * 左侧额外渲染内容
    * Extra content rendered on the left section
    */
@@ -177,6 +187,8 @@ const PreviewToolbar: React.FC<PreviewToolbarProps> = ({
   onClose,
   inspectMode,
   onInspectModeToggle,
+  showOpenInBrowserButton = false,
+  onOpenInBrowser,
   leftExtra,
   rightExtra,
 }) => {
@@ -396,6 +408,32 @@ const PreviewToolbar: React.FC<PreviewToolbarProps> = ({
                 <path d='M13 13l6 6' />
               </svg>
               <span>{inspectMode ? t('preview.html.inspecting') : t('preview.html.inspectElement')}</span>
+            </div>
+          )}
+
+          {isHTML && !hasNoRenderableContent && showOpenInBrowserButton && onOpenInBrowser && (
+            <div
+              data-testid='preview-open-in-browser'
+              className={toolbarBtn}
+              onClick={() => void onOpenInBrowser()}
+              title={t('preview.html.openInBrowserTooltip')}
+            >
+              <svg
+                width={toolbarIconSize}
+                height={toolbarIconSize}
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                className='text-t-secondary'
+              >
+                <circle cx='12' cy='12' r='10' />
+                <line x1='2' y1='12' x2='22' y2='12' />
+                <path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' />
+              </svg>
+              <span>{t('preview.html.openInBrowser')}</span>
             </div>
           )}
         </div>
