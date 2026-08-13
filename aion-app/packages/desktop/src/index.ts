@@ -760,7 +760,7 @@ const handleAppReady = async (): Promise<void> => {
   } else {
     // System Node is required before aioncore starts (no bundled Node runtime).
     const nodePreflight = checkSystemNodeRuntime();
-    if (!nodePreflight.ok) {
+    if (nodePreflight.ok === false) {
       console.error('[AionUi] System Node.js preflight failed:', nodePreflight.message);
       markBackendStartupFailed(new Error(nodePreflight.message));
       await captureBackendStartupFailure(new Error(nodePreflight.message));
