@@ -2,15 +2,18 @@
  * Resolve the aioncore binary path.
  *
  * Search order:
- *  1. Bundled with app (production)
- *  2. System PATH
+ *  1. AIONUI_DEV_AIONCORE_BIN (unpackaged / dev only; relative to cwd)
+ *  2. {cwd}/resources/bundled-aioncore/... (unpackaged only)
+ *  3. Bundled with app via process.resourcesPath (production)
+ *  4. System PATH
  */
 
 import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 
 const BINARY_NAME = 'aioncore';
+const DEV_AIONCORE_BIN_ENV = 'AIONUI_DEV_AIONCORE_BIN';
 const MAX_DIR_ENTRIES = 20;
 const MAX_LOOKUP_TEXT_LENGTH = 1000;
 
@@ -18,6 +21,10 @@ type BackendBinaryResolveDiagnostics = {
   resourcesPath?: string;
   runtimeKey: string;
   binaryName: string;
+  checkedDevEnvPath?: string;
+  devEnvExists?: boolean;
+  checkedDevBundledPath?: string;
+  devBundledExists?: boolean;
   checkedBundledPath?: string;
   bundledDirExists?: boolean;
   runtimeDirExists?: boolean;
@@ -37,6 +44,13 @@ class BackendBinaryResolveError extends Error {
     this.diagnostics = diagnostics;
   }
 }
+
+type ResolveBinaryPathOptions = {
+  /** When true, skip dev env and cwd/resources candidates. Defaults to Electron app.isPackaged. */
+  isPackaged?: boolean;
+  env?: NodeJS.ProcessEnv;
+  cwd?: string;
+};
 
 function getBinaryName(): string {
   return process.platform === 'win32' ? `${BINARY_NAME}.exe` : BINARY_NAME;
@@ -60,18 +74,73 @@ function trimLookupText(text: string): string {
   return text.trim().slice(0, MAX_LOOKUP_TEXT_LENGTH);
 }
 
+function readDefaultIsPackaged(): boolean {
+  try {
+    // Lazy require keeps this module testable without an Electron runtime.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const electron = require('electron') as { app?: { isPackaged?: boolean } };
+    return electron.app?.isPackaged === true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveDevEnvBinary(
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+  diagnostics: BackendBinaryResolveDiagnostics
+): string | null {
+  const raw = env[DEV_AIONCORE_BIN_ENV]?.trim();
+  if (!raw) return null;
+
+  const candidate = isAbsolute(raw) ? resolve(raw) : resolve(cwd, raw);
+  diagnostics.checkedDevEnvPath = candidate;
+  const exists = existsSync(candidate);
+  diagnostics.devEnvExists = exists;
+  if (exists) return candidate;
+
+  throw new BackendBinaryResolveError(
+    `AIONUI_DEV_AIONCORE_BIN is set but binary not found at "${candidate}".`,
+    diagnostics
+  );
+}
+
+function resolveDevBundledPath(
+  cwd: string,
+  runtimeKey: string,
+  binaryName: string,
+  diagnostics: BackendBinaryResolveDiagnostics
+): string | null {
+  const candidate = join(cwd, 'resources', 'bundled-aioncore', runtimeKey, binaryName);
+  diagnostics.checkedDevBundledPath = candidate;
+  diagnostics.devBundledExists = existsSync(candidate);
+  if (diagnostics.devBundledExists) return candidate;
+  return null;
+}
+
 /**
  * Resolve the aioncore binary path.
  * Returns the absolute path to the binary, or throws if not found.
  */
-export function resolveBinaryPath(): string {
+export function resolveBinaryPath(options: ResolveBinaryPathOptions = {}): string {
   const runtimeKey = getRuntimeKey();
   const binaryName = getBinaryName();
+  const isPackaged = options.isPackaged ?? readDefaultIsPackaged();
+  const env = options.env ?? process.env;
+  const cwd = options.cwd ?? process.cwd();
   const diagnostics: BackendBinaryResolveDiagnostics = {
     runtimeKey,
     binaryName,
     pathLookupCommand: process.platform === 'win32' ? `where ${BINARY_NAME}` : `which ${BINARY_NAME}`,
   };
+
+  if (!isPackaged) {
+    const fromDevEnv = resolveDevEnvBinary(env, cwd, diagnostics);
+    if (fromDevEnv) return fromDevEnv;
+
+    const fromDevBundled = resolveDevBundledPath(cwd, runtimeKey, binaryName, diagnostics);
+    if (fromDevBundled) return fromDevBundled;
+  }
 
   const bundled = bundledPath(runtimeKey, binaryName, diagnostics);
   if (bundled) return bundled;
@@ -97,7 +166,6 @@ function bundledPath(
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   if (!resourcesPath) return null;
   diagnostics.resourcesPath = resourcesPath;
-
   const bundledDir = join(resourcesPath, 'bundled-aioncore');
   const runtimeDir = join(bundledDir, runtimeKey);
   const candidate = join(runtimeDir, binaryName);
@@ -127,4 +195,5 @@ function resolveFromSystemPATH(diagnostics: BackendBinaryResolveDiagnostics): st
   return null;
 }
 
-export type { BackendBinaryResolveDiagnostics };
+export type { BackendBinaryResolveDiagnostics, ResolveBinaryPathOptions };
+export { BackendBinaryResolveError };

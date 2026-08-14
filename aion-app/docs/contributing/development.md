@@ -92,9 +92,29 @@ bun run start
 
 During startup, AionUi launches `aioncore` automatically and passes the backend port to the renderer. You do not need to start AionCore in a separate terminal.
 
+### How the desktop app finds `aioncore` in development
+
+Unpackaged Electron (`bun run start`) resolves the backend in this order:
+
+1. **`AIONUI_DEV_AIONCORE_BIN`** (dev only) — absolute path, or relative to the process cwd (normally the `aion-app` repo root). If set but the file is missing, startup fails instead of falling through.
+2. **`resources/bundled-aioncore/{platform-arch}/aioncore`** under the repo cwd (same layout packaging uses).
+3. Electron `process.resourcesPath` bundled copy (rarely present in unpackaged Electron).
+4. System **`PATH`** (e.g. `~/.cargo/bin/aioncore`).
+
+Example — prefer the repo bundled binary without relying on PATH:
+
+```bash
+export AIONUI_DEV_AIONCORE_BIN="resources/bundled-aioncore/darwin-arm64/aioncore"
+bun run start
+```
+
+Packaged builds ignore `AIONUI_DEV_AIONCORE_BIN` and the cwd `resources/` candidate.
+
 ## Updating the Local Backend
 
-When you pull or change AionCore, reinstall the backend binary and restart AionUi:
+Preferred for local Electron: put an up-to-date binary under `resources/bundled-aioncore/{platform-arch}/` (e.g. via prepare scripts or copy from an AionCore release/`cargo build --release`), then restart AionUi. Optionally set `AIONUI_DEV_AIONCORE_BIN` to that relative path.
+
+Alternatively, install onto PATH and restart:
 
 ```bash
 cd ../AionCore
@@ -104,15 +124,15 @@ cd ../AionUi
 bun run start
 ```
 
-Use `--force` when rebuilding local changes with the same AionCore package version; otherwise Cargo may keep the already installed binary.
+Use `--force` when rebuilding local changes with the same AionCore package version; otherwise Cargo may keep the already installed binary. Note that `cargo build --release` alone does **not** update `~/.cargo/bin`.
 
 ## Backend Startup Troubleshooting
 
 ### `Cannot find "aioncore" binary`
 
-AionUi cannot find the backend from the `PATH` inherited by `bun run start`.
+AionUi cannot find the backend from the resolve order above (dev env, repo `resources/bundled-aioncore`, packaged Resources, then `PATH`).
 
-Check from the same terminal where you start AionUi:
+For development, either place the binary under `resources/bundled-aioncore/{platform-arch}/`, set `AIONUI_DEV_AIONCORE_BIN`, or ensure `aioncore` is on `PATH`:
 
 ```bash
 # macOS / Linux
