@@ -9,6 +9,8 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { getBrandDisplayName } from '@/common/brand';
+
 export const MIN_SYSTEM_NODE_MAJOR = 24;
 
 export type NodeRuntimePreflightResult =
@@ -85,7 +87,7 @@ export function checkSystemNodeRuntime(minMajor = MIN_SYSTEM_NODE_MAJOR): NodeRu
     return {
       ok: false,
       reason: 'not_found',
-      message: `Node.js not found in PATH. Install Node.js major >= ${minMajor}, then restart AionUi.`,
+      message: `Node.js not found in PATH. Install Node.js major >= ${minMajor}, then restart ${getBrandDisplayName()}.`,
     };
   }
 
@@ -116,7 +118,7 @@ export function checkSystemNodeRuntime(minMajor = MIN_SYSTEM_NODE_MAJOR): NodeRu
     return {
       ok: false,
       reason: 'version_too_old',
-      message: `Node.js ${oldestTooNew.version} is below required major ${minMajor}. Install Node.js major >= ${minMajor}, then restart AionUi.`,
+      message: `Node.js ${oldestTooNew.version} is below required major ${minMajor}. Install Node.js major >= ${minMajor}, then restart ${getBrandDisplayName()}.`,
     };
   }
 
@@ -131,6 +133,6 @@ export function checkSystemNodeRuntime(minMajor = MIN_SYSTEM_NODE_MAJOR): NodeRu
   return {
     ok: false,
     reason: 'not_found',
-    message: `Node.js not found in PATH. Install Node.js major >= ${minMajor}, then restart AionUi.`,
+    message: `Node.js not found in PATH. Install Node.js major >= ${minMajor}, then restart ${getBrandDisplayName()}.`,
   };
 }

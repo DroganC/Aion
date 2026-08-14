@@ -64,6 +64,7 @@ vi.mock('@/renderer/components/settings/SettingsModal/contents/FeedbackReportMod
 
 import AboutModalContent from '@/renderer/components/settings/SettingsModal/contents/AboutModalContent';
 import { setUpdateReadyState } from '@/renderer/components/settings/updateReadyState';
+import { getBrandDisplayName } from '@/common/brand';
 
 describe('AboutModalContent update ready state', () => {
   beforeEach(() => {
@@ -86,6 +87,7 @@ describe('AboutModalContent update ready state', () => {
   it('replaces check update with ready-to-install when an update package is ready', async () => {
     render(<AboutModalContent />);
 
+    expect(screen.getByRole('heading', { name: getBrandDisplayName() })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'settings.checkForUpdates' })).toBeInTheDocument();
 
     await act(async () => {

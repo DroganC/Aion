@@ -8,6 +8,7 @@ import {
   listNodeCandidatesFromPath,
   preferNodeBinOnPath,
 } from '../../../../packages/desktop/src/process/startup/nodeRuntimePreflight';
+import { getBrandDisplayName } from '@/common/brand';
 
 const posixIt = process.platform === 'win32' ? it.skip : it;
 
@@ -72,6 +73,7 @@ describe('nodeRuntimePreflight', () => {
       if (result.ok) return;
       expect(result.reason).toBe('version_too_old');
       expect(result.message).toContain('22.22.3');
+      expect(result.message).toContain(getBrandDisplayName());
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
