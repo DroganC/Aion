@@ -1,20 +1,23 @@
 # Aion 构建脚本与完整流程
 
-本文档覆盖本仓库三个包的**本地构建**、**打包产物**和 **CI 发布**。命令以仓库根目录 `/Users/cl/Desktop/Aion` 为参照；实际执行时请先 `cd` 到对应子目录。
+本文档覆盖本仓库四个包的**本地构建**、**打包产物**和 **CI 发布**。命令以仓库根目录 `/Users/cl/Desktop/Aion` 为参照；实际执行时请先 `cd` 到对应子目录。
 
 | 包 | 目录 | 产物 | 入口 |
 | -- | ---- | ---- | ---- |
+| AionRS | `aionrs/` | agent 引擎 crates（嵌入 aion-core） | `cargo build` / `just` |
 | AionCore | `aion-core/` | `aioncore` 后端二进制 | `just build` |
 | AionUi | `aion-app/` | 桌面安装包 + Web CLI 包 | `just build` / `node scripts/build-with-builder.js` |
 | OfficeCLI | `office-cli/` | `officecli` 单文件 CLI | `./build.sh` |
 
-三者不是一次 `make` 打完。桌面安装包在打包时**下载或拷贝**已发布的 `aioncore`；`officecli` **不打进安装包**，由运行中的 AionCore 按需安装。
+四者不是一次 `make` 打完。`aion-core` 以 git tag 依赖 `aionrs` 的 crates（嵌入式 agent 引擎）；桌面安装包在打包时**下载或拷贝**已发布的 `aioncore`；`officecli` **不打进安装包**，由运行中的 AionCore 按需安装。
 
 ```
 office-cli  ──独立发布──► GitHub Releases / npm
                               │
                               │  运行时按需安装（非打包期）
                               ▼
+aionrs      ──git tag 依赖──► 嵌入 aion-core（编译期）
+                              │
 aion-core   ──发布二进制──► GitHub Releases / Manual Build artifacts
                               │
                               │  打包期 prepareAioncore.js
@@ -96,10 +99,11 @@ bun run build-mac:arm64   # 或对应平台脚本
 
 | 用途 | 工具 | 说明 |
 | ---- | ---- | ---- |
-| 三包通用 | `just` | app / core 的本地入口 |
+| 四包通用 | `just` | app / core / aionrs 的本地入口 |
 | aion-app | Node.js ≥ 22、bun、Python 3 | native module（`better-sqlite3`）编译需要 Python |
 | aion-app Windows | VS 2022 C++ 工作负载、Windows SDK 10.0.19041.0 | `MSVS_VERSION=2022` |
-| aion-core | Rust **1.95.0**（`aion-core/rust-toolchain.toml`）、cargo | 可选 `cargo-nextest` |
+| aionrs | Rust **1.96.1**（`aionrs/rust-toolchain.toml`）、cargo | 可选 `cargo-nextest` |
+| aion-core | Rust **1.95.0**（`aion-core/rust-toolchain.toml`）、cargo | 可选 `cargo-nextest`；需能访问 `iOfficeAI/aionrs` git tag |
 | aion-core Linux ARM64 发布 | Docker + `cross` | 仅 CI 交叉编译 |
 | office-cli | .NET **10** SDK | 产物自包含，运行时不需要 .NET |
 | 拉 GitHub 产物 | `gh` 或 `GITHUB_TOKEN` / `GH_TOKEN` | `prepareAioncore` 下载 Release / Actions artifact |
@@ -117,7 +121,15 @@ bun run build-mac:arm64   # 或对应平台脚本
 - Unix：`aion-core/scripts/just/build.sh`
 - Windows：`aion-core/scripts/just/build.ps1`
 
-`just _cargo` 走 `scripts/just/cargo.sh` / `cargo.ps1`，可叠加本地 aionrs SDK patch。
+`just _cargo` 走 `scripts/just/cargo.sh` / `cargo.ps1`。设了 `AIONRS` 环境变量时，会把本地 aionrs checkout 以 `[patch]` 方式叠加到 11 个 `aion-*` crate 上，便于修改 aionrs 后立即在 core 里验证：
+
+```bash
+cd aion-core
+AIONRS=../aionrs just _cargo test -p aionui-core
+AIONRS=../aionrs just _cargo clippy -p aionui-core -- -D warnings
+```
+
+升级 aionrs 依赖 tag 用 `just update-aionrs`（或 `just update-aionrs v0.2.11`），脚本会统一改写 `Cargo.toml` 中的 git tag、追加 changelog footer 并创建 PR。
 
 ```bash
 cd aion-core
@@ -180,9 +192,41 @@ Linux 基线检查：`aion-core/scripts/check-glibc-baseline.sh`。
 
 ---
 
-## 4. aion-app
+## 4. aionrs
+
+aionrs 是 AionUi 的嵌入式 agent 引擎（多提供者 AI agent CLI / SDK）。aion-core 通过 `Cargo.toml` 中的 git tag 依赖它的 crates（`git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.x"`），本地不产生独立安装产物。
 
 ### 4.1 本地入口
+
+```bash
+cd aionrs
+cargo build                  # 完整 workspace 构建
+cargo test -p aion-<crate>   # 按 crate 测试（开发时别跑整个 workspace）
+cargo clippy -p aion-<crate> -- -D warnings
+just push                    # 完整门禁后再 git push
+```
+
+工具链固定：`aionrs/rust-toolchain.toml`（Rust **1.96.1**）。
+
+### 4.2 在 aion-core 里使用本地 aionrs
+
+core 的 `just _cargo`（`scripts/just/cargo.sh` / `cargo.ps1`）支持 `AIONRS` 环境变量，把本目录 11 个 `aion-*` crates 以 `[patch]` 叠加到 aion-core 依赖上：
+
+```bash
+cd aion-core
+AIONRS=../aionrs just _cargo test -p aionui-core
+AIONRS=../aionrs just _cargo clippy -p aionui-core -- -D warnings
+```
+
+### 4.3 升级 aion-core 的 aionrs 依赖
+
+`aion-core/scripts/just/update-aionrs.sh`（`just update-aionrs [tag]`）：读取 `Cargo.toml` 中所有 aionrs git 依赖，统一改写为最新（或指定）tag，追加 changelog footer（含 compare 链接），提交 `chore(deps): update aionrs to <tag>` 分支并 `just push` 开 PR。不带参数时自动取 GitHub 最新 tag。
+
+---
+
+## 5. aion-app
+
+### 5.1 本地入口
 
 优先用 `aion-app/justfile`，与 CI 环境对齐。
 
@@ -229,7 +273,7 @@ bun run build-deb          # Linux
 | `--pack-only` | 只完成 Vite，不跑 electron-builder |
 | `--force` | 强制全量 Vite |
 
-### 4.2 打包脚本清单
+### 5.2 打包脚本清单
 
 | 脚本 | 角色 |
 | ---- | ---- |
@@ -249,7 +293,7 @@ bun run build-deb          # Linux
 
 `aion-app/scripts/README.md` 仍提到已删除的 `beforeBuild.js`。当前 `electron-builder.yml` 只挂了 `afterPack` / `afterSign`，且 `npmRebuild: false`。
 
-### 4.3 aioncore 如何进安装包
+### 5.3 aioncore 如何进安装包
 
 解析顺序（`prepare-aioncore.js`）：
 
@@ -271,7 +315,7 @@ electron-builder 再把它拷到应用 `Resources/bundled-aioncore/`。运行时
 
 下载 Release 时需要能访问 `https://github.com/iOfficeAI/AionCore`。CI 使用 `GH_TOKEN` / `GITHUB_TOKEN`。
 
-### 4.4 Web CLI 包
+### 5.4 Web CLI 包
 
 与桌面安装包同频（dev 分支 / 正式 tag）：
 
@@ -287,7 +331,7 @@ dist-web-cli/aionui-web-<ver>-<os>-<arch>.tar.gz
 
 本地：`node scripts/pack-web-cli.js`（需先有 renderer 构建产物）。CI：`.github/workflows/pack-web-cli.yml`。
 
-### 4.5 CI
+### 5.5 CI
 
 | Workflow | 触发 | 做什么 |
 | -------- | ---- | ------ |
@@ -315,9 +359,9 @@ macOS 签名 / 公证 secrets：`BUILD_CERTIFICATE_BASE64`、`P12_PASSWORD`、`A
 
 ---
 
-## 5. office-cli
+## 6. office-cli
 
-### 5.1 本地
+### 6.1 本地
 
 ```bash
 cd office-cli
@@ -349,7 +393,7 @@ bin/release/officecli-mac-arm64          # 本机 Darwin arm64 示例
 
 macOS 本地构建会对 staged `.new` 文件做 ad-hoc `codesign`，再原子 `mv`，避免覆盖正在运行的二进制。
 
-### 5.2 CI
+### 6.2 CI
 
 | Workflow | 触发 | 做什么 |
 | -------- | ---- | ------ |
@@ -364,7 +408,7 @@ OfficeCLI **不**由 aion-app / aion-core 在打包期嵌入。AionCore 的 `aio
 
 ---
 
-## 6. 环境变量（打包相关）
+## 7. 环境变量（打包相关）
 
 | 变量 | 谁读 | 作用 |
 | ---- | ---- | ---- |
@@ -382,7 +426,7 @@ OfficeCLI **不**由 aion-app / aion-core 在打包期嵌入。AionCore 的 `aio
 
 ---
 
-## 7. 最小命令速查
+## 8. 最小命令速查
 
 只改 UI / 桌面：
 
@@ -394,6 +438,18 @@ cd aion-app && bun install && bun start
 
 ```bash
 cd aion-core && just run
+```
+
+只改 agent 引擎（aionrs）：
+
+```bash
+cd aionrs && cargo build
+```
+
+用本地 aionrs 联调后端：
+
+```bash
+cd aion-core && AIONRS=../aionrs just _cargo test -p aionui-core
 ```
 
 只改 OfficeCLI：
@@ -422,7 +478,7 @@ cd office-cli && ./build.sh all
 
 ---
 
-## 8. 相关文件
+## 9. 相关文件
 
 | 文件 | 内容 |
 | ---- | ---- |
@@ -432,5 +488,9 @@ cd office-cli && ./build.sh all
 | `aion-app/packages/desktop/electron-builder.yml` | 安装包与 extraResources |
 | `aion-core/justfile` | 后端构建 / 测试 / push 门禁 |
 | `aion-core/ARCHITECTURE.md` | 运行时与 managed-resources |
+| `aion-core/scripts/just/cargo.sh` | `just _cargo`：AIONRS 本地 patch 入口 |
+| `aion-core/scripts/just/update-aionrs.sh` | 升级 aion-core 的 aionrs git tag |
+| `aionrs/AGENTS.md` | aionrs 包内约定（crates、测试、push 门禁） |
+| `aionrs/rust-toolchain.toml` | Rust 工具链版本（1.96.1） |
 | `office-cli/README.md` | 从源码构建一节 |
 | `office-cli/CONTRIBUTING.md` | 贡献与 PR 粒度 |
